@@ -1,0 +1,44 @@
+{
+  "proven_skills": [
+    "Python",
+    "Go",
+    "PostgreSQL",
+    "Redis",
+    "Kafka",
+    "FastAPI",
+    "Django",
+    "Docker",
+    "Kubernetes",
+    "Terraform",
+    "AWS",
+    "REST APIs",
+    "Microservices",
+    "Distributed Systems",
+    "CI/CD",
+    "Git",
+    "Linux"
+  ],
+  "transferable_skills": [
+    "Rust",
+    "TypeScript",
+    "GCP",
+    "GraphQL",
+    "Elasticsearch",
+    "DynamoDB"
+  ],
+  "domain_expertise": [
+    "High-Throughput Ingestion",
+    "Cloud Infrastructure",
+    "Database Performance Tuning",
+    "Developer Tooling",
+    "Payment Gateway Integration",
+    "SOC 2 Compliance"
+  ],
+  "soft_skills": [
+    "Technical Mentorship",
+    "RFC Authoring",
+    "Cross-functional Collaboration",
+    "System Design & Architecture",
+    "Root-Cause Post-Mortem Analysis"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "ai-job-agent",
+  "version": "0.1.0",
+  "description": "Codex & OpenCode compatible autonomous job search agent",
+  "skills": "./skills",
+  "entrypoint": "scripts/daily_workflow.py"
+}

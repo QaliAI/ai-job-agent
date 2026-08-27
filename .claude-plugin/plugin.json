@@ -1,0 +1,14 @@
+{
+  "name": "ai-job-agent",
+  "version": "0.1.0",
+  "description": "Autonomous, local-first AI job search assistant with ATS discovery, explainable scoring, and anti-hallucination resume tailoring.",
+  "author": "AI Job Agent Contributors",
+  "homepage": "https://github.com/QaliAI/ai-job-agent",
+  "repository": "https://github.com/QaliAI/ai-job-agent.git",
+  "license": "MIT",
+  "skills": "./skills",
+  "rules": [
+    "Always preserve candidate privacy and never invent metrics, dates, or technical skills.",
+    "Run claim-check QA on all generated resumes and cover letters."
+  ]
+}

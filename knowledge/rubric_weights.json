@@ -1,0 +1,23 @@
+{
+  "weights": {
+    "title_and_role_relevance": 0.25,
+    "core_required_skills": 0.25,
+    "experience_seniority": 0.15,
+    "domain_industry_fit": 0.15,
+    "location_and_work_mode": 0.10,
+    "preferred_qualifications": 0.10
+  },
+  "score_thresholds": {
+    "apply_min_score": 80,
+    "consider_min_score": 65,
+    "skip_below_score": 65
+  },
+  "hard_disqualifiers": [
+    "work_authorization_mismatch",
+    "excluded_company_match",
+    "excluded_industry_match",
+    "below_minimum_salary",
+    "location_relocation_incompatible",
+    "clearance_unobtainable"
+  ]
+}

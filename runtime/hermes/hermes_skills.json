@@ -1,0 +1,39 @@
+{
+  "name": "ai-job-agent",
+  "version": "0.1.0",
+  "description": "Local-first autonomous AI job search staff for Hermes",
+  "skills": [
+    {
+      "name": "setup-profile",
+      "path": "skills/setup-profile/SKILL.md"
+    },
+    {
+      "name": "find-jobs",
+      "path": "skills/find-jobs/SKILL.md"
+    },
+    {
+      "name": "score-fit",
+      "path": "skills/score-fit/SKILL.md"
+    },
+    {
+      "name": "tailor-resume",
+      "path": "skills/tailor-resume/SKILL.md"
+    },
+    {
+      "name": "claim-check",
+      "path": "skills/claim-check/SKILL.md"
+    },
+    {
+      "name": "write-cover-letter",
+      "path": "skills/write-cover-letter/SKILL.md"
+    },
+    {
+      "name": "answer-questions",
+      "path": "skills/answer-questions/SKILL.md"
+    },
+    {
+      "name": "daily-brief",
+      "path": "skills/daily-brief/SKILL.md"
+    }
+  ]
+}

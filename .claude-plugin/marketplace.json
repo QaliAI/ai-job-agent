@@ -1,0 +1,12 @@
+{
+  "name": "ai-job-agent",
+  "category": "Career & Productivity",
+  "tags": ["job-search", "resume-tailor", "ats", "career", "local-first"],
+  "plugins": [
+    {
+      "name": "ai-job-agent",
+      "source": "./.claude-plugin/plugin.json",
+      "description": "Autonomous AI job search staff for finding fresh ATS postings and tailoring grounded resumes."
+    }
+  ]
+}
