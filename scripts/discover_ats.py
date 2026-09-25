@@ -18,6 +18,7 @@ Supports:
 
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.request
@@ -58,7 +59,7 @@ def discover_ats_for_slug(slug: str) -> Optional[Dict[str, str]]:
         ("lever", f"https://api.lever.co/v0/postings/{clean_slug}?mode=json"),
         ("smartrecruiters", f"https://api.smartrecruiters.com/v1/companies/{clean_slug}/postings?limit=1"),
         ("recruitee", f"https://{clean_slug}.recruitee.com/api/offers/"),
-        ("workable", f"https://apply.workable.com/api/v1/widget/accounts/{clean_slug}"),
+        ("workable", f"https://apply.workable.com/api/v1/widget/accounts/{clean_slug}?details=true"),
         ("bamboohr", f"https://{clean_slug}.bamboohr.com/careers/list"),
         ("personio", f"https://{clean_slug}.jobs.personio.de/xml"),
         ("teamtailor", f"https://{clean_slug}.teamtailor.com/jobs.rss")
