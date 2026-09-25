@@ -27,9 +27,9 @@ if hasattr(sys.stderr, "reconfigure"):
 def _extract_section(content: str, heading_fragment: str) -> str:
     """Extract a markdown heading section without leaking bullets from other sections."""
     pattern = (
-        r"(?ims)^##+\\s*[^\\n]*"
+        r"(?ims)^##+\s*[^\n]*"
         + re.escape(heading_fragment)
-        + r"[^\\n]*\\n(.*?)(?=^##+\\s|\\Z)"
+        + r"[^\n]*\n(.*?)(?=^##+\s|\Z)"
     )
     match = re.search(pattern, content)
     return match.group(1) if match else ""
@@ -38,7 +38,7 @@ def _extract_section(content: str, heading_fragment: str) -> str:
 def _extract_bullets(section: str) -> List[str]:
     values = []
     for line in section.splitlines():
-        match = re.match(r"^\\s*[-*]\\s+(.*)$", line)
+        match = re.match(r"^\s*[-*]\s+(.*)$", line)
         if not match:
             continue
         value = match.group(1).strip()
@@ -63,10 +63,10 @@ def _extract_nested_bullets(section: str, label: str) -> List[str]:
             continue
 
         # A new top-level bullet ends this field.
-        if re.match(r"^[-*]\\s+", line):
+        if re.match(r"^[-*]\s+", line):
             break
 
-        match = re.match(r"^\\s{2,}[-*]\\s+(.*)$", line)
+        match = re.match(r"^\s{2,}[-*]\s+(.*)$", line)
         if match:
             value = match.group(1).strip()
             if value:
@@ -111,7 +111,7 @@ def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
         ]
 
         wm_match = re.search(
-            r"Work Mode(?: Preference)?\\*{0,2}\\s*:\\s*([^\\n\\r]+)",
+            r"Work Mode(?: Preference)?\*{0,2}\s*:\s*([^\n\r]+)",
             content,
             re.IGNORECASE,
         )
@@ -130,7 +130,7 @@ def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
         )
 
         sal_match = re.search(
-            r"Minimum Base Salary\\*{0,2}\\s*:\\s*\\$?(\\d{1,3}(?:,\\d{3})*|\\d+)",
+            r"Minimum Base Salary\*{0,2}\s*:\s*\$?(\d{1,3}(?:,\d{3})*|\d+)",
             content,
             re.IGNORECASE,
         )
@@ -163,7 +163,7 @@ def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
         ]
 
     except Exception as e:
-        sys.stderr.write(f"Error parsing preferences {filepath}: {e}\\n")
+        sys.stderr.write(f"Error parsing preferences {filepath}: {e}\n")
 
     return prefs
 
