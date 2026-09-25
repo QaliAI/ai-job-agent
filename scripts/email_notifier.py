@@ -28,12 +28,30 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
+def render_tracker_strip(tracker_summary: Optional[Dict[str, Any]]) -> str:
+    if not tracker_summary:
+        return ""
+    labels = ("new", "applied", "interview", "rejected", "archived")
+    cells = []
+    for label in labels:
+        cells.append(
+            f'<div style="flex:1;"><div style="font-size:18px;font-weight:800;">{int(tracker_summary.get(label, 0))}</div>'
+            f'<div style="font-size:11px;text-transform:uppercase;color:#64748b;">{label}</div></div>'
+        )
+    return (
+        '<div style="display:flex;background:#ffffff;border-bottom:1px solid #e2e8f0;padding:12px 28px;text-align:center;">'
+        + "".join(cells)
+        + "</div>"
+    )
+
+
 def render_html_brief(
     scored_jobs: List[Dict[str, Any]],
     candidate_profile: Dict[str, Any],
     total_scanned: int = 0,
     total_filtered: int = 0,
-    tailored_files: Optional[Dict[str, str]] = None
+    tailored_files: Optional[Dict[str, str]] = None,
+    tracker_summary: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Renders a modern, responsive HTML email template for the daily brief."""
     today_str = date.today().strftime("%B %d, %Y")
@@ -68,6 +86,14 @@ def render_html_brief(
         source = html.escape(job.get("source", "ATS").capitalize())
         strengths = fit_eval.get("strengths", [])
         gaps = fit_eval.get("material_gaps", [])
+        explanation = fit_eval.get("explanation") or {}
+        if explanation.get("why_fit"):
+            strengths = explanation["why_fit"]
+        if explanation.get("why_not"):
+            gaps = explanation["why_not"]
+        found = job.get("first_seen") or job.get("first_seen_at") or ""
+        if isinstance(found, str) and "T" in found:
+            found = found.split("T", 1)[0]
 
         # Score color
         if score >= 85:
@@ -100,7 +126,7 @@ def render_html_brief(
             </div>
 
             <div style="background: #f8fafc; border-radius: 6px; padding: 10px 14px; margin: 12px 0; font-size: 13px; color: #334155;">
-                <strong>💰 Compensation:</strong> {sal_str} &nbsp;|&nbsp; <strong>📡 Source:</strong> {source} Direct &middot; Verified Live
+                <strong>💰 Compensation:</strong> {html.escape(sal_str)} &nbsp;|&nbsp; <strong>📡 Source:</strong> {source} &nbsp;|&nbsp; <strong>Found:</strong> {html.escape(found or "this run")}
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-top: 10px;">
@@ -153,7 +179,12 @@ def render_html_brief(
             <div style="margin-top: 8px; font-size: 14px; color: #94a3b8;">
                 {today_str} &middot; Prepared for <strong>{cand_name}</strong> ({cand_title})
             </div>
+            <div style="margin-top: 10px; font-size: 13px; color: #e2e8f0;">
+                Personal dashboard for this profile only. No auto-apply. You review and submit.
+            </div>
         </div>
+
+        {render_tracker_strip(tracker_summary)}
 
         <!-- Metric Stat Cards -->
         <div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 16px 28px; text-align: center;">
