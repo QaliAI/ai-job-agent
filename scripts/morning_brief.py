@@ -38,6 +38,19 @@ def format_morning_brief(
     
     tailored_map = tailored_files or {}
 
+    track_counts: Dict[str, int] = {}
+    for job in scored_jobs:
+        track = (job.get("fit_evaluation") or {}).get("opportunity_track") or {}
+        label = track.get("label")
+        if label:
+            track_counts[label] = track_counts.get(label, 0) + 1
+    lane_summary = ", ".join(
+        f"{label}: {count}"
+        for label, count in sorted(
+            track_counts.items(), key=lambda item: item[1], reverse=True
+        )
+    ) or "Single-track / legacy profile"
+
     md = f"""# 🌅 Daily Job Search Brief — {today_str}
 
 **Candidate**: {cand_name} ({cand_title})  
@@ -51,6 +64,7 @@ def format_morning_brief(
 * **Passed Strict Filters**: {total_filtered or len(scored_jobs)}
 * **Top Opportunities Identified**: **{len(scored_jobs)}**
 * **Tailored Resumes Prepared & QA-Verified**: **{len(tailored_map)}**
+* **Opportunity Lanes Represented**: {lane_summary}
 
 ---
 
@@ -91,6 +105,12 @@ def format_morning_brief(
         md += f"* **Fit Score**: **{score}/100** | **Confidence**: {conf} | **Recommendation**: **{rec}**\n"
         md += f"* **Location**: {loc} ({wm}) | **Compensation**: {sal_str}\n"
         md += f"* **Source**: {source_ats} Direct · **Status**: Live & Verified\n"
+        opportunity_track = fit_eval.get("opportunity_track") or {}
+        if opportunity_track.get("label"):
+            md += (
+                f"* **Opportunity Lane**: {opportunity_track['label']} "
+                f"({opportunity_track.get('score', 0)}/100 lane match)\n"
+            )
         
         if strengths:
             md += f"* **Key Strengths**: {'; '.join(strengths[:2])}\n"
