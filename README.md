@@ -28,6 +28,9 @@
 * ⚖️ **Explainable Rubric Fit Scoring**: Evaluates candidate fit across a transparent 6-factor weighted rubric (0–100) with explicit strength and material gap disclosures (no fake LLM match percentages).
 * 🛡️ **Strict Anti-Slop / Anti-Fabrication QA**: Every claim on a tailored resume or cover letter is independently verified against your candidate ground truth by `scripts/claim_check.py`. **Zero invented metrics, fake skills, or inflated scopes.**
 * 🌅 **Signature Daily Morning Brief**: Produces an executive report summarizing fresh postings, fit scores, rationale, direct employer application links, and tailored files.
+* 🧭 **Multi-Track Opportunity Hunting**: Supports candidates who legitimately span several lanes (for example AI transformation, product building, growth systems, and fractional advisory) instead of forcing everything into one title.
+* 💼 **Consulting / Fractional / Buyer-Signal Research**: Normalizes non-job revenue opportunities separately from employment postings, retains source evidence, and recommends the executive/function roles most likely to own the problem.
+* 👤 **Evidence-Backed Person Targeting**: Researches the actual decision-maker only after an opportunity is qualified; no invented names, emails, or mass outreach.
 * 🗄️ **Persistent Application Ledger**: Maintains `jobs/history.json` so you never see or re-process duplicate opportunities across daily runs.
 * 🔒 **100% Local-First & Privacy Guaranteed**: Your resume, contact details, and application materials live strictly in your private local directory and are protected from accidental git commits.
 
@@ -202,6 +205,7 @@ Your career history contains sensitive personal data. AI Job Agent is designed f
 * **[SETUP-WIZARD.md](SETUP-WIZARD.md)** — Step-by-step onboarding walkthrough.
 * **[docs/OPEN_SOURCE_RESEARCH.md](docs/OPEN_SOURCE_RESEARCH.md)** — Full audit of 10+ open source projects.
 * **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — In-depth architectural specification and dataflow.
+* **[docs/MULTI_TRACK_OPPORTUNITY_HUNTER.md](docs/MULTI_TRACK_OPPORTUNITY_HUNTER.md)** — Multi-lane job, consulting, buyer-signal, and decision-maker targeting model.
 * **[docs/JOB-SOURCES.md](docs/JOB-SOURCES.md)** — Technical details on supported public ATS endpoints.
 * **[docs/WINDOWS.md](docs/WINDOWS.md)** & **[docs/MACOS.md](docs/MACOS.md)** — OS-specific operational guides.
 * **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Diagnostic solutions and FAQ.
