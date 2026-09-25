@@ -24,7 +24,7 @@
 
 ## 🌟 Key Capabilities
 
-* 🌐 **Direct-From-The-Source ATS Discovery**: Scans public career endpoints directly (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, BambooHR, Personio, Teamtailor, Workday) — no repost aggregators, no ghost jobs.
+* 🌐 **Direct-From-The-Source ATS Discovery**: Scans public career endpoints directly (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, BambooHR, Personio, Teamtailor) — no repost aggregators, no ghost jobs.
 * ⚖️ **Explainable Rubric Fit Scoring**: Evaluates candidate fit across a transparent 6-factor weighted rubric (0–100) with explicit strength and material gap disclosures (no fake LLM match percentages).
 * 🛡️ **Strict Anti-Slop / Anti-Fabrication QA**: Every claim on a tailored resume or cover letter is independently verified against your candidate ground truth by `scripts/claim_check.py`. **Zero invented metrics, fake skills, or inflated scopes.**
 * 🌅 **Signature Daily Morning Brief**: Produces an executive report summarizing fresh postings, fit scores, rationale, direct employer application links, and tailored files.
@@ -46,7 +46,7 @@
     [1. Candidate Ground Truth]        |        [2. Direct Public ATS Feeds]
     --------------------------         |        ----------------------------
     candidate/MASTER_PROFILE.md        |        Greenhouse  Lever    Ashby
-    candidate/SEARCH_PREFERENCES.md    |        Workday     Recruitee  SmartRecruiters
+    candidate/SEARCH_PREFERENCES.md    |        Workable    Recruitee  SmartRecruiters
     candidate/VERIFIED_ACHIEVEMENTS.md |        Personio    BambooHR  Teamtailor
     candidate/skills.json              |                    |
                  |                     |                    v
