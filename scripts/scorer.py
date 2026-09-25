@@ -26,6 +26,9 @@ import re
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from filter_jobs import parse_markdown_preferences
+from opportunity_tracks import best_track_for_job, load_opportunity_tracks, search_queries_from_tracks
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
@@ -92,16 +95,27 @@ def load_candidate_profile(candidate_dir: str = "candidate") -> Dict[str, Any]:
         except Exception as e:
             sys.stderr.write(f"Error loading {master_path}: {e}\n")
 
-    # Load SEARCH_PREFERENCES.md
+    # Load search preferences with section-aware parsing.
     prefs_path = os.path.join(candidate_dir, "SEARCH_PREFERENCES.md")
     if os.path.exists(prefs_path):
-        try:
-            with open(prefs_path, "r", encoding="utf-8") as f:
-                p_text = f.read()
-            titles = re.findall(r"[-*]\s*([A-Za-z0-9\s\(\)/,]+)", p_text)
-            profile_data["target_titles"] = [t.strip() for t in titles if len(t.strip()) > 3]
-        except Exception as e:
-            sys.stderr.write(f"Error loading {prefs_path}: {e}\n")
+        prefs = parse_markdown_preferences(prefs_path)
+        profile_data["target_titles"] = prefs.get("target_titles", [])
+        if prefs.get("work_mode") and prefs.get("work_mode") != "any":
+            profile_data["work_mode_pref"] = prefs["work_mode"]
+
+    # Optional multi-track configuration lets one candidate pursue several
+    # legitimate professional identities without forcing them into one title.
+    tracks = load_opportunity_tracks(candidate_dir)
+    profile_data["opportunity_tracks"] = tracks
+    track_queries = search_queries_from_tracks(tracks, limit=50)
+    seen_titles = set()
+    merged_titles = []
+    for target_title in list(profile_data.get("target_titles", [])) + track_queries:
+        key = target_title.strip().lower()
+        if key and key not in seen_titles:
+            seen_titles.add(key)
+            merged_titles.append(target_title.strip())
+    profile_data["target_titles"] = merged_titles
 
     return profile_data
 
@@ -133,6 +147,14 @@ def score_single_job(
             ratio = matches / max(len(t_words), 1)
             title_score = max(title_score, int(50 + ratio * 40))
 
+    # Multi-track role relevance. The best configured lane can improve title
+    # relevance, but cannot fabricate skills or erase later gap analysis.
+    matched_track, track_fit_score = best_track_for_job(
+        job, profile.get("opportunity_tracks", [])
+    )
+    if matched_track and track_fit_score:
+        title_score = max(title_score, track_fit_score)
+
     # 2. Core Required Skills (0 to 100)
     proven_skills = profile.get("proven_skills", [])
     matched_proven = []
@@ -147,9 +169,12 @@ def score_single_job(
     # Detect technologies mentioned in JD
     common_tech_keywords = [
         "python", "go", "golang", "rust", "java", "c++", "c#", "typescript", "javascript",
-        "react", "node", "fastapi", "django", "postgresql", "mysql", "redis", "kafka",
-        "rabbitmq", "docker", "kubernetes", "aws", "gcp", "azure", "terraform", "graphql",
-        "rest", "grpc", "microservices", "snowflake", "spark", "sql"
+        "react", "next.js", "node", "fastapi", "django", "postgresql", "postgres", "mysql",
+        "redis", "kafka", "rabbitmq", "docker", "kubernetes", "aws", "gcp", "azure",
+        "terraform", "graphql", "rest", "grpc", "microservices", "snowflake", "spark", "sql",
+        "supabase", "vercel", "openai", "anthropic", "claude", "chatgpt", "llm", "rag",
+        "agent", "agents", "n8n", "zapier", "make", "hubspot", "crm", "revops",
+        "marketing automation", "workflow automation", "ai transformation", "ai strategy"
     ]
     jd_tech_mentioned = [t for t in common_tech_keywords if re.search(r"\b" + re.escape(t) + r"\b", desc_lower)]
     
@@ -235,6 +260,11 @@ def score_single_job(
 
     # Compile strengths & material gaps
     strengths = []
+    if matched_track and track_fit_score >= 50:
+        strengths.append(
+            f"Best opportunity lane: {matched_track.get('label', matched_track.get('id'))} "
+            f"({track_fit_score}/100 track match)"
+        )
     if matched_proven:
         strengths.append(f"Core proven technical skills: {', '.join(matched_proven[:6])}")
     if matched_domains:
@@ -265,6 +295,15 @@ def score_single_job(
         "score": final_score,
         "confidence": confidence,
         "recommendation": recommendation,
+        "opportunity_track": (
+            {
+                "id": matched_track.get("id"),
+                "label": matched_track.get("label"),
+                "score": track_fit_score,
+            }
+            if matched_track
+            else None
+        ),
         "dimension_scores": {
             "title_relevance": title_score,
             "core_skills": skills_score,

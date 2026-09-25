@@ -1,0 +1,22 @@
+{
+  "opportunities": [
+    {
+      "opportunity_type": "buyer_signal",
+      "source": "public_web",
+      "source_url": "https://example.com/source",
+      "company": "Example Company",
+      "title": "Company publicly announced an AI automation initiative",
+      "description": "The company is actively evaluating workflow automation and AI adoption.",
+      "location": "United States",
+      "engagement_type": "consulting",
+      "signals": [
+        "AI adoption",
+        "workflow automation"
+      ],
+      "evidence": [
+        "Public announcement explicitly states the company is evaluating generative AI for internal operations."
+      ],
+      "status": "found"
+    }
+  ]
+}

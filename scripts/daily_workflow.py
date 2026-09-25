@@ -32,6 +32,7 @@ from claim_check import load_candidate_ground_truth
 from filter_jobs import filter_job_list, parse_markdown_preferences
 from jobstore import merge_and_deduplicate
 from morning_brief import format_morning_brief
+from opportunity_tracks import matching_queries_for_job, search_queries_from_tracks
 from scorer import load_candidate_profile, score_job_list
 from tailor_engine import tailor_resume
 from verify_postings import verify_job_list
@@ -43,7 +44,9 @@ def run_daily_pipeline(
     jobs_dir: str = "jobs",
     query: str = "",
     tailor_top: int = 3,
-    mock_input_file: Optional[str] = None
+    mock_input_file: Optional[str] = None,
+    max_queries: int = 8,
+    max_companies: int = 0
 ) -> Dict[str, Any]:
     """Executes the complete daily job search cycle."""
     today_str = date.today().isoformat()
@@ -57,8 +60,25 @@ def run_daily_pipeline(
     prefs_file = os.path.join(candidate_dir, "SEARCH_PREFERENCES.md")
     prefs = parse_markdown_preferences(prefs_file) if os.path.exists(prefs_file) else {}
 
-    search_query = query or (profile.get("target_titles", [""])[0] if profile.get("target_titles") else "")
-    print(f"    Candidate: {profile.get('title', 'Software Engineer')} | Query: '{search_query}'")
+    if query:
+        search_queries = [query]
+    else:
+        search_queries = search_queries_from_tracks(
+            profile.get("opportunity_tracks", []),
+            limit=max_queries,
+        )
+        if not search_queries:
+            search_queries = list(profile.get("target_titles", []))[:max_queries]
+        if not search_queries:
+            search_queries = [""]
+
+    query_preview = ", ".join(search_queries[:4])
+    if len(search_queries) > 4:
+        query_preview += f", +{len(search_queries) - 4} more"
+    print(
+        f"    Candidate: {profile.get('title', 'Software Engineer')} | "
+        f"Queries: {query_preview or '(all roles)'}"
+    )
 
     # Step 2: Fetch raw postings
     raw_jobs: List[Dict[str, Any]] = []
@@ -67,21 +87,53 @@ def run_daily_pipeline(
         with open(mock_input_file, "r", encoding="utf-8") as f:
             raw_jobs = json.load(f)
     else:
-        print("🌐 [2/8] Querying direct employer ATS boards (Greenhouse, Lever, Ashby, SmartRecruiters)...")
+        print(
+            "🌐 [2/8] Fetching direct employer ATS boards once, then "
+            f"matching locally across {len(search_queries)} opportunity queries..."
+        )
         registry_path = os.path.join("knowledge", "ats_patterns.json")
         companies = []
         if os.path.exists(registry_path):
             with open(registry_path, "r", encoding="utf-8") as f:
                 companies = json.load(f).get("companies", [])
-        
-        # Pull from top 10 companies by default to keep scan fast and clean
-        target_companies = companies[:12] if companies else [
+
+        target_companies = companies if companies else [
             {"name": "Stripe", "ats": "greenhouse", "token": "stripe"},
             {"name": "Ramp", "ats": "ashby", "token": "ramp"},
             {"name": "Linear", "ats": "ashby", "token": "linear"},
             {"name": "Anthropic", "ats": "lever", "token": "anthropic"}
         ]
-        raw_jobs = search_ats_postings(target_companies, query=search_query)
+        if max_companies and max_companies > 0:
+            target_companies = target_companies[:max_companies]
+
+        # Fetch each company board once. Re-querying the same board for every
+        # title wastes requests and made the old workflow both narrow and costly.
+        board_jobs = search_ats_postings(target_companies, query="")
+
+        discovered: Dict[str, Dict[str, Any]] = {}
+        for job in board_jobs:
+            matched_queries = matching_queries_for_job(job, search_queries)
+            if search_queries and not matched_queries:
+                continue
+
+            key = (
+                job.get("canonical_url")
+                or job.get("apply_url")
+                or job.get("id")
+                or "|".join(
+                    [
+                        str(job.get("company", "")).lower(),
+                        str(job.get("title", "")).lower(),
+                        str(job.get("location", "")).lower(),
+                    ]
+                )
+            )
+            job_copy = dict(job)
+            job_copy["discovery_queries"] = matched_queries
+            discovered[key] = job_copy
+
+
+        raw_jobs = list(discovered.values())
 
     print(f"    Found {len(raw_jobs)} total postings.")
 
@@ -163,7 +215,8 @@ def run_daily_pipeline(
         "top_jobs_count": len(top_10),
         "tailored_count": len(tailored_map),
         "brief_path": brief_path,
-        "top_jobs": top_10
+        "top_jobs": top_10,
+        "search_queries": search_queries
     }
 
 
@@ -175,6 +228,18 @@ def main():
     parser.add_argument("--query", default="", help="Search query override")
     parser.add_argument("--tailor-top", type=int, default=3, help="Number of top jobs to auto-tailor")
     parser.add_argument("--fixture", help="Path to fixture JSON for offline/testing runs")
+    parser.add_argument(
+        "--max-queries",
+        type=int,
+        default=8,
+        help="Maximum number of balanced opportunity-track queries per run"
+    )
+    parser.add_argument(
+        "--max-companies",
+        type=int,
+        default=0,
+        help="Maximum ATS companies to scan; 0 means the full registry"
+    )
 
     args = parser.parse_args()
 
@@ -192,7 +257,9 @@ def main():
         jobs_dir=args.jobs,
         query=args.query,
         tailor_top=args.tailor_top,
-        mock_input_file=args.fixture
+        mock_input_file=args.fixture,
+        max_queries=args.max_queries,
+        max_companies=args.max_companies
     )
 
 

@@ -21,6 +21,8 @@ Once in Hermes, you can interact naturally or invoke specific skills:
 * `"Find fresh backend engineering jobs at Stripe, Ramp, and Linear."` → executes `skills/find-jobs`
 * `"Score this job description against my master profile: <paste JD>"` → executes `skills/score-fit`
 * `"Tailor my resume for this role and run a claim check on it."` → executes `skills/tailor-resume` & `skills/claim-check`
+* `"Find consulting and fractional opportunities based on my AI, growth, and automation tracks."` → executes `skills/find-consulting-opportunities`
+* `"Research the correct decision-maker for opportunity <id> and show me the evidence."` → executes `skills/research-target-person`
 
 ---
 
@@ -34,3 +36,20 @@ Hermes supports autonomous periodic execution. Add this task to your Hermes sche
 }
 ```
 Hermes will run your job search every weekday morning at 8:00 AM local time and present your morning report.
+
+
+## 4. Optional Revenue Opportunity Schedule
+
+The deterministic ATS job scan and web-research consulting scan are intentionally separate.
+A useful Hermes pattern is to run the consulting/fractional research once each weekday and
+only surface evidence-backed changes:
+
+```json
+{
+  "name": "Revenue Opportunity Brief",
+  "cron": "30 8 * * 1-5",
+  "instruction": "Use the find-consulting-opportunities skill to look for fresh evidence-backed consulting, fractional, advisory, coaching, AI implementation, growth-systems, and buyer-signal opportunities that match candidate/OPPORTUNITY_TRACKS.json. Deduplicate against prior results, research likely owner roles, and write only new qualified items to output/revenue_opportunities.md. Do not send outreach."
+}
+```
+
+Keep contact and outreach actions human-reviewed.

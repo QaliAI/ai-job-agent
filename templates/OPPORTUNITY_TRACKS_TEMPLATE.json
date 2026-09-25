@@ -1,0 +1,166 @@
+{
+  "tracks": [
+    {
+      "id": "ai-transformation",
+      "label": "AI Strategy & Transformation",
+      "priority": 1,
+      "search_queries": [
+        "AI Transformation Consultant",
+        "AI Enablement Engineer",
+        "Fractional Chief AI Officer",
+        "AI Automation Consultant",
+        "AI Implementation Lead"
+      ],
+      "title_keywords": [
+        "ai transformation",
+        "ai enablement",
+        "chief ai officer",
+        "ai consultant",
+        "ai implementation",
+        "ai adoption"
+      ],
+      "positive_signals": [
+        "executive workshop",
+        "roadmap",
+        "business value",
+        "use cases",
+        "workflow",
+        "automation",
+        "adoption",
+        "change management",
+        "roi"
+      ],
+      "negative_signals": [
+        "phd required",
+        "research scientist",
+        "model training infrastructure"
+      ],
+      "preferred_engagements": [
+        "full-time",
+        "contract",
+        "fractional",
+        "consulting"
+      ]
+    },
+    {
+      "id": "ai-product-builder",
+      "label": "AI Product & Solutions Builder",
+      "priority": 2,
+      "search_queries": [
+        "AI Product Builder",
+        "Applied AI Engineer",
+        "AI Solutions Engineer",
+        "AI Product Lead",
+        "AI Prototyping Engineer"
+      ],
+      "title_keywords": [
+        "ai product",
+        "applied ai",
+        "ai solutions",
+        "product engineer",
+        "prototype",
+        "prototyping"
+      ],
+      "positive_signals": [
+        "llm",
+        "agent",
+        "rag",
+        "prototype",
+        "customer-facing",
+        "api",
+        "full stack",
+        "automation",
+        "rapid iteration"
+      ],
+      "negative_signals": [
+        "research scientist",
+        "distributed training",
+        "cuda kernel"
+      ],
+      "preferred_engagements": [
+        "full-time",
+        "contract"
+      ]
+    },
+    {
+      "id": "growth-ai-automation",
+      "label": "Growth, Marketing & AI Automation",
+      "priority": 3,
+      "search_queries": [
+        "AI Marketing Lead",
+        "Marketing Automation Consultant",
+        "Fractional CMO",
+        "Growth Systems Lead",
+        "Revenue Operations AI"
+      ],
+      "title_keywords": [
+        "fractional cmo",
+        "growth",
+        "marketing automation",
+        "revenue operations",
+        "revops",
+        "ai marketing"
+      ],
+      "positive_signals": [
+        "crm",
+        "hubspot",
+        "pipeline",
+        "lead generation",
+        "lifecycle",
+        "automation",
+        "go-to-market",
+        "gtm",
+        "conversion"
+      ],
+      "negative_signals": [
+        "pure brand design",
+        "media buyer only"
+      ],
+      "preferred_engagements": [
+        "full-time",
+        "contract",
+        "fractional",
+        "consulting"
+      ]
+    },
+    {
+      "id": "full-stack-ai-builder",
+      "label": "Full-Stack AI Builder",
+      "priority": 4,
+      "search_queries": [
+        "Full Stack AI Engineer",
+        "Product Engineer AI",
+        "AI Solutions Architect",
+        "Technical Prototyping Lead",
+        "Forward Deployed Engineer AI"
+      ],
+      "title_keywords": [
+        "full stack",
+        "product engineer",
+        "solutions architect",
+        "forward deployed",
+        "technical prototyping"
+      ],
+      "positive_signals": [
+        "next.js",
+        "typescript",
+        "react",
+        "supabase",
+        "postgres",
+        "vercel",
+        "api",
+        "agent",
+        "customer"
+      ],
+      "negative_signals": [
+        "kernel",
+        "embedded firmware",
+        "compiler internals"
+      ],
+      "preferred_engagements": [
+        "full-time",
+        "contract"
+      ]
+    }
+  ]
+}
