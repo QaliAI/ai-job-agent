@@ -66,8 +66,8 @@ def generate_cover_letter(candidate_dir: str, job: Dict[str, Any]) -> str:
         bullets = re.findall(r"^\s*[*•-]\s+([A-Z][^\n\r]+)", master_text, re.MULTILINE)
         achievements = [b.strip() for b in bullets if len(b.strip()) > 20][:4]
 
-    top_ach1 = achievements[0] if len(achievements) > 0 else "delivered measurable operational impact across multiple key initiatives"
-    top_ach2 = achievements[1] if len(achievements) > 1 else "consistently maintained high standards of execution and stakeholder satisfaction"
+    top_ach1 = achievements[0] if len(achievements) > 0 else ""
+    top_ach2 = achievements[1] if len(achievements) > 1 else ""
 
     proven_skills = list(truth.get("proven_skills", []))
     skills_preview = ", ".join(proven_skills[:4]) if proven_skills else "core professional competencies"
@@ -86,9 +86,9 @@ Dear Hiring Manager and {company} Team,
 
 I am writing to express my enthusiastic interest in the **{job_title}** role at **{company}**. With a strong background in {skills_preview}, I am eager to contribute directly to {company}'s ongoing success and high-impact initiatives.
 
-Throughout my career, I have focused on solving operational challenges and driving measurable results:
-* **Key Contribution**: {top_ach1}.
-* **Operational Excellence**: {top_ach2}.
+Throughout my career, the verified record I can point to is:
+{f"* **Verified contribution**: {top_ach1}." if top_ach1 else "* No verified achievement bullets were on file. Nothing was invented for this letter."}
+{f"* **Verified contribution**: {top_ach2}." if top_ach2 else ""}
 
 I admire {company}'s reputation for quality, culture, and high standards. I would welcome the opportunity to bring my experience and dedication to your team.
 

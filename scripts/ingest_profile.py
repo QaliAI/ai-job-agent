@@ -100,14 +100,15 @@ def extract_contact_info(text: str) -> Dict[str, str]:
 def extract_career_metadata(text: str) -> Dict[str, Any]:
     """Extracts job titles, experience level, preferences, and skills."""
     meta = {
-        "title": "Professional",
-        "years_exp": 5,
+        "title": "",
+        "years_exp": None,
         "target_titles": [],
-        "work_mode": "remote",
-        "min_salary": 100000,
+        "work_mode": "",
+        "min_salary": None,
         "skills": [],
         "achievements": [],
-        "summary": ""
+        "summary": "",
+        "work_authorization": "",
     }
 
     # Years of experience
@@ -136,6 +137,14 @@ def extract_career_metadata(text: str) -> Dict[str, Any]:
     elif re.search(r"\b(onsite|in-office)\b", text, re.IGNORECASE):
         meta["work_mode"] = "onsite"
 
+    auth_match = re.search(
+        r"((?:us citizen|authorized to work|no sponsorship|visa sponsorship|green card)[^\n\r.]*)",
+        text,
+        re.IGNORECASE,
+    )
+    if auth_match:
+        meta["work_authorization"] = auth_match.group(1).strip()
+
     # Current / Target Title
     title_m = re.search(r"(?:Current Title|Target Role|Position|Role|Title)\s*[:\-]\s*([^\n\r,]+)", text, re.IGNORECASE)
     if title_m:
@@ -144,7 +153,7 @@ def extract_career_metadata(text: str) -> Dict[str, Any]:
         meta["target_titles"].append(t_clean)
 
     # Common role titles detector if no explicit title
-    if meta["title"] == "Professional":
+    if not meta["title"]:
         role_candidates = [
             "Software Engineer", "Backend Engineer", "Frontend Engineer", "Full Stack Engineer",
             "Data Scientist", "Data Analyst", "Product Manager", "Project Manager",
@@ -185,7 +194,7 @@ def extract_career_metadata(text: str) -> Dict[str, Any]:
         if re.search(rf"\b{re.escape(s.lower())}\b", text_lower):
             detected_skills.append(s)
 
-    meta["skills"] = detected_skills if detected_skills else ["Communication", "Problem Solving", "Leadership"]
+    meta["skills"] = detected_skills
 
     return meta
 
@@ -210,9 +219,27 @@ def build_canonical_profile_files(
     links_block = "\n".join(links_lines) if links_lines else "* **Links**: Not specified"
 
     ach_preview = "\n".join([f"* {a}" for a in meta["achievements"][:6]]) if meta["achievements"] else (
-        f"* Maintained proven operational excellence in {meta['title']} role.\n"
-        f"* Collaborated with key stakeholders to achieve organizational objectives.\n"
-        f"* Leveraged expertise in {', '.join(meta['skills'][:3])} to drive performance."
+        "* No achievement bullets were detected in the source resume. None were invented."
+    )
+    title_text = meta["title"] or "Not provided in the source resume"
+    years_text = (
+        f"{meta['years_exp']} years"
+        if meta["years_exp"] is not None
+        else "Not provided in the source resume"
+    )
+    auth_text = meta["work_authorization"] or "Not provided in the source resume"
+    skill_text = ", ".join(meta["skills"]) if meta["skills"] else "None detected in the source resume"
+    summary_bits = []
+    if meta["title"]:
+        summary_bits.append(meta["title"])
+    if meta["years_exp"] is not None:
+        summary_bits.append(f"{meta['years_exp']} years of experience stated in the source")
+    if meta["skills"]:
+        summary_bits.append("skills named in the source: " + ", ".join(meta["skills"][:6]))
+    summary_text = (
+        "Source resume states: " + "; ".join(summary_bits) + "."
+        if summary_bits else
+        "No summary was present in the source resume."
     )
 
     master_content = f"""# Master Profile: {contact['name']}
@@ -224,44 +251,40 @@ def build_canonical_profile_files(
 
 ## 1. Candidate Overview & Contact
 * **Full Name**: {contact['name']}
-* **Current Title**: {meta['title']}
+* **Current Title**: {title_text}
 * **Location**: {contact['location']}
 * **Email**: {contact['email']}
 * **Phone**: {contact['phone'] or 'Not specified'}
 {links_block}
-* **Work Authorization**: Authorized (No sponsorship required)
-* **Total Years of Experience**: {meta['years_exp']} years
+* **Work Authorization**: {auth_text}
+* **Total Years of Experience**: {years_text}
 
 ---
 
 ## 2. Professional Summary
-Results-oriented {meta['title']} with {meta['years_exp']} years of proven experience. Demonstrated track record of operational rigor, domain expertise, and high-impact contributions in {', '.join(meta['skills'][:4])}. Dedicated to delivering measurable results and fostering collaborative success.
+{summary_text}
 
 ---
 
 ## 3. Core Competencies & Skills
-* **Core Competencies**: {', '.join(meta['skills'])}
-* **Disciplines**: Execution Excellence, Cross-Functional Teamwork, Strategic Problem Solving
+* **Core Competencies**: {skill_text}
 
 ---
 
 ## 4. Professional Experience
+Employer names were not structured as a separate field unless they already appear inside the source bullets below. No employer was invented.
 
-### **{meta['title']}** | Primary Experience
-*{contact['location']} | Verified Background*
 {ach_preview}
 
 ---
 
 ## 5. Education & Credentials
-* **Degree / Certification**: Verified Credentials & Training
-* **Professional Standing**: Active & Verified
+* Not provided unless a degree or certification already appears in the source text above.
 
 ---
 
 ## 6. Honest Framings & Nuance Notes
-* **Primary Scope**: Verified focus in {meta['title']} and related responsibilities.
-* **Continuous Learning**: Open to progressive challenges and expanding domain impact.
+* Only facts copied from the source resume are in this file.
 """
     master_path = os.path.join(output_dir, "MASTER_PROFILE.md")
     with open(master_path, "w", encoding="utf-8") as f:
@@ -270,43 +293,40 @@ Results-oriented {meta['title']} with {meta['years_exp']} years of proven experi
     # 2. candidate/skills.json
     skills_data = {
         "proven_skills": meta["skills"],
-        "transferable_skills": [
-            "Technical Communication",
-            "Project Management",
-            "Analytical Thinking",
-            "Process Improvement"
-        ],
-        "domain_expertise": [meta["title"]],
-        "soft_skills": [
-            "Team Collaboration",
-            "Strategic Execution",
-            "Problem Solving"
-        ]
+        "transferable_skills": [],
+        "domain_expertise": [meta["title"]] if meta["title"] else [],
+        "soft_skills": []
     }
     skills_path = os.path.join(output_dir, "skills.json")
     with open(skills_path, "w", encoding="utf-8") as f:
         json.dump(skills_data, f, indent=2)
 
     # 3. candidate/SEARCH_PREFERENCES.md
-    target_titles_block = "\n".join([f"* {t}" for t in meta["target_titles"]]) or f"* {meta['title']}"
+    target_titles_block = "\n".join([f"* {t}" for t in meta["target_titles"]]) or "* Not provided"
+    work_mode_text = meta["work_mode"].capitalize() if meta["work_mode"] else "Not provided"
+    salary_line = (
+        f"* **Minimum Base Salary**: ${meta['min_salary']:,} USD"
+        if meta["min_salary"] else
+        "* **Minimum Base Salary**: Not provided"
+    )
+    location_line = contact["location"] or "Not provided"
     prefs_content = f"""# Job Search Preferences
 
 ## 1. Target Roles & Titles
 {target_titles_block}
 
 ## 2. Work Arrangement & Location
-* **Work Mode Preference**: {meta['work_mode'].capitalize()}
+* **Work Mode Preference**: {work_mode_text}
 * **Allowed Locations**:
-  - {contact['location']}
-  - United States (Remote)
+  - {location_line}
 
 ## 3. Compensation Preferences
-* **Minimum Base Salary**: ${meta['min_salary']:,} USD
+{salary_line}
 * **Currency**: USD
 
 ## 4. Hard Exclusions & Blacklist
 * **Excluded Companies**:
-* **Excluded Title Keywords**: "Junior", "Intern"
+* **Excluded Title Keywords**:
 """
     prefs_path = os.path.join(output_dir, "SEARCH_PREFERENCES.md")
     with open(prefs_path, "w", encoding="utf-8") as f:
@@ -314,8 +334,7 @@ Results-oriented {meta['title']} with {meta['years_exp']} years of proven experi
 
     # 4. candidate/VERIFIED_ACHIEVEMENTS.md
     ach_lines = [f"- [x] {a}" for a in meta["achievements"]] if meta["achievements"] else [
-        f"- [x] Spearheaded key initiatives as {meta['title']} driving measurable efficiency.",
-        f"- [x] Successfully applied {', '.join(meta['skills'][:3])} to exceed core project milestones."
+        "- [ ] No achievement bullets were detected in the source resume. None were invented."
     ]
     ach_content = f"""# Verified Achievement Bank: {contact['name']}
 
