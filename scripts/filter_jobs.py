@@ -24,8 +24,39 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
+def _extract_section(content: str, heading_fragment: str) -> str:
+    """Extract a markdown heading section without leaking bullets from other sections."""
+    pattern = (
+        r"(?ims)^##+\\s*[^\\n]*"
+        + re.escape(heading_fragment)
+        + r"[^\\n]*\\n(.*?)(?=^##+\\s|\\Z)"
+    )
+    match = re.search(pattern, content)
+    return match.group(1) if match else ""
+
+
+def _extract_bullets(section: str) -> List[str]:
+    values = []
+    for line in section.splitlines():
+        match = re.match(r"^\\s*[-*]\\s+(.*)$", line)
+        if not match:
+            continue
+        value = match.group(1).strip()
+        # Ignore parent labels such as "* **Primary Target Titles**:".
+        if value.startswith("**") and value.endswith(":"):
+            continue
+        if value:
+            values.append(value.strip('"').strip())
+    return values
+
+
 def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
-    """Parses a markdown SEARCH_PREFERENCES.md file into structured criteria."""
+    """Parse SEARCH_PREFERENCES.md into structured criteria.
+
+    The previous parser treated nearly every bullet in the document as a target
+    title. That polluted role matching with locations, industries, and blacklist
+    entries. This parser scopes extraction to the intended markdown sections.
+    """
     if not os.path.exists(filepath):
         return {}
 
@@ -43,42 +74,75 @@ def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Extract target titles
-        title_matches = re.findall(r"[-*]\s*([A-Za-z0-9\s\(\)/,]+)", content)
-        
-        # Parse work mode
-        wm_match = re.search(r"Work Mode(?: Preference)?\s*:\s*([^\n\r]+)", content, re.IGNORECASE)
+        target_section = _extract_section(content, "Target Roles")
+        prefs["target_titles"] = [
+            value
+            for value in _extract_bullets(target_section)
+            if not value.lower().startswith((
+                "primary target titles",
+                "secondary / adjacent titles",
+                "secondary target titles",
+            ))
+        ]
+
+        wm_match = re.search(
+            r"Work Mode(?: Preference)?\\*{0,2}\\s*:\\s*([^\\n\\r]+)",
+            content,
+            re.IGNORECASE,
+        )
         if wm_match:
             wm_text = wm_match.group(1).lower()
-            if "remote only" in wm_text or "remote" in wm_text:
+            if "remote" in wm_text:
                 prefs["work_mode"] = "remote"
             elif "hybrid" in wm_text:
                 prefs["work_mode"] = "hybrid"
+            elif "onsite" in wm_text or "on-site" in wm_text:
+                prefs["work_mode"] = "onsite"
 
-        # Parse minimum salary
-        sal_match = re.search(r"Minimum Base Salary\s*:\s*\$?(\d{1,3}(?:,\d{3})*|\d+)", content, re.IGNORECASE)
+        location_section = _extract_section(content, "Work Arrangement")
+        allowed_match = re.search(
+            r"(?ims)Allowed Locations\\*{0,2}\\s*:\\s*\\n(.*?)(?=^\\s*[-*]\\s*\\*\\*[^\\n]+:\\*\\*|\\Z)",
+            location_section,
+        )
+        if allowed_match:
+            prefs["allowed_locations"] = _extract_bullets(allowed_match.group(1))
+
+        sal_match = re.search(
+            r"Minimum Base Salary\\*{0,2}\\s*:\\s*\\$?(\\d{1,3}(?:,\\d{3})*|\\d+)",
+            content,
+            re.IGNORECASE,
+        )
         if sal_match:
             try:
                 prefs["min_salary"] = float(sal_match.group(1).replace(",", ""))
             except ValueError:
                 pass
 
-        # Parse excluded companies
-        exc_comp_sec = re.search(r"Excluded Companies\s*:\s*([\s\S]*?)(?:##|\n\n\n|\Z)", content, re.IGNORECASE)
-        if exc_comp_sec:
-            comps = re.findall(r"[-*]\s*([A-Za-z0-9\s.,&]+)", exc_comp_sec.group(1))
-            prefs["excluded_companies"] = [c.strip().lower() for c in comps if c.strip()]
+        exclusion_section = _extract_section(content, "Hard Exclusions")
+        company_match = re.search(
+            r"(?ims)Excluded Companies\\*{0,2}\\s*:\\s*\\n(.*?)(?=^\\s*[-*]\\s*\\*\\*[^\\n]+:\\*\\*|\\Z)",
+            exclusion_section,
+        )
+        if company_match:
+            prefs["excluded_companies"] = [
+                value.lower() for value in _extract_bullets(company_match.group(1))
+            ]
 
-        # Parse excluded keywords
-        exc_kw_sec = re.search(r"Excluded Title Keywords\s*:\s*([^\n\r]+)", content, re.IGNORECASE)
-        if exc_kw_sec:
-            raw_kws = re.findall(r'"([^"]+)"', exc_kw_sec.group(1))
-            if not raw_kws:
-                raw_kws = [k.strip() for k in exc_kw_sec.group(1).split(",") if k.strip()]
-            prefs["excluded_title_keywords"] = [k.lower() for k in raw_kws]
+        keyword_match = re.search(
+            r"Excluded (?:Keywords in Titles|Title Keywords)\\*{0,2}\\s*:\\s*([^\\n\\r]+)",
+            exclusion_section,
+            re.IGNORECASE,
+        )
+        if keyword_match:
+            raw = keyword_match.group(1)
+            quoted = re.findall(r'"([^"]+)"', raw)
+            values = quoted or [part.strip() for part in raw.split(",")]
+            prefs["excluded_title_keywords"] = [
+                value.lower().strip() for value in values if value.strip()
+            ]
 
     except Exception as e:
-        sys.stderr.write(f"Error parsing preferences {filepath}: {e}\n")
+        sys.stderr.write(f"Error parsing preferences {filepath}: {e}\\n")
 
     return prefs
 
