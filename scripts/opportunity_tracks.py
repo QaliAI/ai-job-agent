@@ -116,6 +116,63 @@ def search_queries_from_tracks(
     return result
 
 
+GENERIC_QUERY_TOKENS = {
+    "senior", "sr", "lead", "manager", "director", "head", "engineer",
+    "developer", "consultant", "specialist", "principal", "staff", "the", "of"
+}
+
+
+def matching_queries_for_job(
+    job: Dict[str, Any],
+    queries: List[str],
+) -> List[str]:
+    """Return configured queries plausibly represented by a posting.
+
+    ATS boards are fetched once per company. Query matching then happens locally,
+    which makes broad multi-track discovery much cheaper than re-fetching every
+    company board once per search phrase.
+    """
+    if not queries:
+        return []
+
+    title = _clean(job.get("title"))
+    description = _clean(job.get("description"))
+    combined = f"{title} {description}"
+    title_tokens = set(_tokens(title))
+    combined_tokens = set(_tokens(combined))
+    matches: List[str] = []
+
+    for query in queries:
+        query_clean = _clean(query)
+        if not query_clean:
+            continue
+        if query_clean in combined:
+            matches.append(query)
+            continue
+
+        query_tokens = [
+            token for token in _tokens(query)
+            if token not in GENERIC_QUERY_TOKENS
+        ]
+        if not query_tokens:
+            query_tokens = _tokens(query)
+        if not query_tokens:
+            continue
+
+        title_hits = sum(1 for token in query_tokens if token in title_tokens)
+        combined_hits = sum(1 for token in query_tokens if token in combined_tokens)
+
+        # Prefer title evidence. Description-only matching must cover nearly all
+        # of the meaningful query tokens to avoid flooding the shortlist.
+        title_threshold = max(1, (len(query_tokens) + 1) // 2)
+        desc_threshold = max(2, len(query_tokens) - 1)
+
+        if title_hits >= title_threshold or combined_hits >= desc_threshold:
+            matches.append(query)
+
+    return matches
+
+
 def best_track_for_job(
     job: Dict[str, Any],
     tracks: List[Dict[str, Any]],
