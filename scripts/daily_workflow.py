@@ -32,7 +32,7 @@ from ats_engine import search_ats_postings
 from claim_check import load_candidate_ground_truth
 from email_notifier import render_html_brief, send_email_brief
 from filter_jobs import filter_job_list, parse_markdown_preferences
-from jobstore import merge_and_deduplicate
+from jobstore import merge_and_deduplicate, record_run_outcomes
 from morning_brief import format_morning_brief
 from scorer import load_candidate_profile, score_job_list
 from tailor_engine import tailor_resume
@@ -49,7 +49,13 @@ def run_daily_pipeline(
     concurrency: int = 8,
     all_companies: bool = False,
     notify_email: bool = False,
-    prep_applications: bool = False
+    prep_applications: bool = False,
+    skip_live_search: bool = False,
+    profile_overlay: Optional[Dict[str, Any]] = None,
+    prefs_overlay: Optional[Dict[str, Any]] = None,
+    weights_overlay: Optional[Dict[str, float]] = None,
+    digest_limit: int = 10,
+    verify_live: bool = True,
 ) -> Dict[str, Any]:
     """Executes the complete daily job search cycle."""
     today_str = date.today().isoformat()
@@ -60,8 +66,28 @@ def run_daily_pipeline(
 
     print(f"\n🚀 [1/8] Loading candidate profile from '{candidate_dir}'...")
     profile = load_candidate_profile(candidate_dir)
+    if profile_overlay:
+        profile.update({key: value for key, value in profile_overlay.items() if key not in ("proven_skills", "domain_expertise", "target_titles")})
+        if profile_overlay.get("target_titles"):
+            profile["target_titles"] = list(profile_overlay["target_titles"])
+        if profile_overlay.get("name"):
+            profile["name"] = profile_overlay["name"]
+        for key in ("proven_skills", "domain_expertise"):
+            extra = profile_overlay.get(key) or []
+            current = list(profile.get(key) or [])
+            seen = {item.lower() for item in current}
+            for item in extra:
+                if item.lower() not in seen:
+                    current.append(item)
+                    seen.add(item.lower())
+            if extra:
+                profile[key] = current
     prefs_file = os.path.join(candidate_dir, "SEARCH_PREFERENCES.md")
     prefs = parse_markdown_preferences(prefs_file) if os.path.exists(prefs_file) else {}
+    if prefs_overlay:
+        for key, value in prefs_overlay.items():
+            if value not in (None, "", [], {}):
+                prefs[key] = value
 
     search_query = query or (profile.get("target_titles", [""])[0] if profile.get("target_titles") else "")
     print(f"    Candidate: {profile.get('title', 'Professional')} | Query: '{search_query}'")
@@ -72,6 +98,9 @@ def run_daily_pipeline(
         print(f"📦 [2/8] Loading jobs from fixture: '{mock_input_file}'...")
         with open(mock_input_file, "r", encoding="utf-8") as f:
             raw_jobs = json.load(f)
+    elif skip_live_search:
+        print("🌐 [2/8] Job portals are disabled. Live ATS search was not run.")
+        raw_jobs = []
     else:
         print("🌐 [2/8] Querying direct employer ATS boards concurrently...")
         registry_path = os.path.join("knowledge", "ats_patterns.json")
@@ -99,7 +128,15 @@ def run_daily_pipeline(
 
     # Step 4: Verification
     print("🔍 [4/8] Verifying active liveness of postings...")
-    verified_jobs = verify_job_list(raw_jobs)
+    if verify_live:
+        verified_jobs = verify_job_list(raw_jobs)
+    else:
+        print("    Offline run: using liveness flags already on the fixtures.")
+        verified_jobs = []
+        for job in raw_jobs:
+            copied = dict(job)
+            copied["is_live"] = copied.get("is_live", True)
+            verified_jobs.append(copied)
     live_jobs = [j for j in verified_jobs if j.get("is_live", True)]
     print(f"    Active live postings: {len(live_jobs)}/{len(verified_jobs)}")
 
@@ -115,9 +152,13 @@ def run_daily_pipeline(
     if os.path.exists(weights_path):
         with open(weights_path, "r", encoding="utf-8") as f:
             weights = json.load(f).get("weights", {})
+    if weights_overlay:
+        weights = weights_overlay
 
     scored_jobs = score_job_list(passed_jobs, profile, weights) if passed_jobs else []
-    top_10 = scored_jobs[:10]
+    record_run_outcomes(history_file, scored_jobs)
+    limit = digest_limit if digest_limit and digest_limit > 0 else 10
+    top_10 = scored_jobs[:limit]
     print(f"    Scored {len(scored_jobs)} jobs. Top score: {top_10[0].get('fit_score', 0) if top_10 else 0}/100")
 
     # Step 7: Auto-Tailor Top 1-3 Resumes & Prepare Application Dossiers
@@ -200,7 +241,10 @@ def run_daily_pipeline(
         "html_brief_path": latest_html_path,
         "applications_prepared": len(apps_prepared),
         "email_status": email_status,
-        "top_jobs": top_10
+        "top_jobs": top_10,
+        "profile": profile,
+        "skipped_live_search": bool(skip_live_search and not (mock_input_file and os.path.exists(mock_input_file))),
+        "history_path": history_file,
     }
 
 
