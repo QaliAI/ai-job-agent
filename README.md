@@ -24,7 +24,8 @@
 
 ## 🌟 Key Capabilities
 
-* 🌐 **Direct-From-The-Source ATS Discovery**: Scans public career endpoints directly (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, BambooHR, Personio, Teamtailor, Workday) — no repost aggregators, no ghost jobs.
+* 🌐 **Direct-From-The-Source ATS Discovery**: Scans public employer career endpoints and keeps direct postings as the primary source of truth.
+* 🔭 **Optional Broad Tech Discovery**: Add `--include-freehire` to supplement the curated ATS registry with FreeHire's public multi-company tech-job API; direct employer copies win during deduplication.
 * ⚖️ **Explainable Rubric Fit Scoring**: Evaluates candidate fit across a transparent 6-factor weighted rubric (0–100) with explicit strength and material gap disclosures (no fake LLM match percentages).
 * 🛡️ **Strict Anti-Slop / Anti-Fabrication QA**: Every claim on a tailored resume or cover letter is independently verified against your candidate ground truth by `scripts/claim_check.py`. **Zero invented metrics, fake skills, or inflated scopes.**
 * 🌅 **Signature Daily Morning Brief**: Produces an executive report summarizing fresh postings, fit scores, rationale, direct employer application links, and tailored files.
@@ -32,6 +33,7 @@
 * 💼 **Consulting / Fractional / Buyer-Signal Research**: Normalizes non-job revenue opportunities separately from employment postings, retains source evidence, and recommends the executive/function roles most likely to own the problem.
 * 👤 **Evidence-Backed Person Targeting**: Researches the actual decision-maker only after an opportunity is qualified; no invented names, emails, or mass outreach.
 * 🗄️ **Persistent Application Ledger**: Maintains `jobs/history.json` so you never see or re-process duplicate opportunities across daily runs.
+* 📈 **Outcome Feedback Loop**: Records applications, replies, interviews, meetings, proposals, offers, hires, wins, and losses so you can see which opportunity lanes and sources actually convert.
 * 🔒 **100% Local-First & Privacy Guaranteed**: Your resume, contact details, and application materials live strictly in your private local directory and are protected from accidental git commits.
 
 ---
@@ -105,6 +107,9 @@ Open `candidate/MASTER_PROFILE.md` and paste your actual work history, verified 
 ### Step 3: Run Your Daily Job Search
 ```bash
 python scripts/daily_workflow.py
+
+# Optional: broaden tech-role discovery beyond the curated employer registry
+python scripts/daily_workflow.py --include-freehire --freehire-days 21 --freehire-country US
 ```
 In seconds, your morning brief will be generated in `output/latest_brief.md` and tailored resumes will be saved to `output/resumes/`!
 
