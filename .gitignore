@@ -3,7 +3,12 @@
 # ==========================================
 # 1. CANDIDATE PERSONAL DATA & PROFILES
 # NEVER COMMIT YOUR REAL RESUME OR PERSONAL DETAILS
+# profiles/ holds real clients. examples/sample-client is synthetic.
 # ==========================================
+profiles/*
+!profiles/README.md
+examples/sample-client/output/
+examples/sample-client/jobs/
 candidate/MASTER_PROFILE.md
 candidate/SEARCH_PREFERENCES.md
 candidate/VERIFIED_ACHIEVEMENTS.md

@@ -1,0 +1,30 @@
+{
+  "name": "",
+  "source_resume": "resume.md",
+  "target_titles": [],
+  "acceptable_titles": [],
+  "excluded_titles": [],
+  "seniority": null,
+  "locations": [],
+  "work_mode": null,
+  "salary": null,
+  "industries": [],
+  "preferred_companies": [],
+  "excluded_companies": [],
+  "skills": [],
+  "work_authorization": null,
+  "travel": null,
+  "notification": {
+    "channel": "file",
+    "to": null
+  },
+  "jobs_per_digest": 10,
+  "portals": {
+    "enabled": false
+  },
+  "search": {
+    "fixture": null,
+    "offline": true
+  },
+  "priorities": null
+}
