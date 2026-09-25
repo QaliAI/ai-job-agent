@@ -22,6 +22,12 @@ Transform the candidate's raw résumé and search preferences into a durable, lo
    - `VERIFIED_ACHIEVEMENTS.md`: Bullet points with verified metrics and outcomes.
    - `CAREER_STORIES.md`: STAR-format narratives of key technical challenges.
    - `skills.json`: Categorized JSON taxonomy of proven vs transferable skills.
+   - `OPPORTUNITY_TRACKS.json` (optional): Multiple legitimate career/revenue lanes, each with its own search queries and fit signals. Start from `templates/OPPORTUNITY_TRACKS_TEMPLATE.json`.
 
-3. **Verify Integrity**:
+3. **Configure Multi-Track Search When Needed**:
+   - Use opportunity tracks when the candidate plausibly spans distinct role families (for example AI consulting + product building + growth).
+   - Keep every track grounded in actual evidence from the profile.
+   - Do not create a track merely to chase a posting the candidate cannot support.
+
+4. **Verify Integrity**:
    - Run `python scripts/doctor.py` to confirm profile files are valid and protected by `.gitignore`.
