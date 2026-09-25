@@ -23,6 +23,9 @@ Once in Hermes, you can interact naturally or invoke specific skills:
 * `"Tailor my resume for this role and run a claim check on it."` → executes `skills/tailor-resume` & `skills/claim-check`
 * `"Find consulting and fractional opportunities based on my AI, growth, and automation tracks."` → executes `skills/find-consulting-opportunities`
 * `"Research the correct decision-maker for opportunity <id> and show me the evidence."` → executes `skills/research-target-person`
+* `"Broaden today's search beyond the curated ATS registry."` → executes `skills/find-broad-jobs`
+* `"Record that I got an interview / meeting / proposal / offer for this opportunity."` → executes `skills/record-outcome`
+* `"Show me which search lanes and sources are actually converting."` → executes `skills/review-search-performance`
 
 ---
 
@@ -53,3 +56,27 @@ only surface evidence-backed changes:
 ```
 
 Keep contact and outreach actions human-reviewed.
+
+## 5. Broader Daily Job Discovery
+
+For a personal job hunt, supplement the direct ATS scan with FreeHire's public tech-job API:
+
+```json
+{
+  "name": "Daily Broad Job Brief",
+  "cron": "0 8 * * 1-5",
+  "instruction": "Run python scripts/daily_workflow.py --include-freehire --freehire-days 21 --freehire-country US and summarize only high-signal opportunities. Prefer direct ATS copies when the same posting is found through multiple sources."
+}
+```
+
+FreeHire is optional and best-effort. The direct ATS workflow must still work when it is unavailable.
+
+## 6. Outcome Review
+
+Record meaningful outcomes as they happen, then run:
+
+```bash
+python scripts/outcome_ledger.py summary --out output/outcome_summary.md
+```
+
+Use conversion evidence to reallocate search effort across lanes and sources. Never change factual candidate history to chase conversion.
