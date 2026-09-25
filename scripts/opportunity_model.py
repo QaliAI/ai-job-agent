@@ -7,13 +7,14 @@ roles from grounded opportunity context, but it never invents names or contact
 details.
 """
 
+import argparse
 import hashlib
 import json
 import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from opportunity_tracks import best_track_for_job
+from opportunity_tracks import best_track_for_job, load_opportunity_tracks
 
 
 OPPORTUNITY_TYPES = {
@@ -353,3 +354,25 @@ def normalize_file(
         json.dump(normalized, f, indent=2, ensure_ascii=False)
 
     return len(normalized)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Normalize job, fractional, consulting, referral, and buyer-signal opportunities."
+    )
+    parser.add_argument("--in", dest="in_file", required=True, help="Raw opportunities JSON")
+    parser.add_argument("--out", required=True, help="Normalized opportunities JSON")
+    parser.add_argument(
+        "--candidate",
+        default="candidate",
+        help="Candidate directory containing optional OPPORTUNITY_TRACKS.json",
+    )
+    args = parser.parse_args()
+
+    tracks = load_opportunity_tracks(args.candidate)
+    count = normalize_file(args.in_file, args.out, tracks=tracks)
+    print(f"Normalized {count} opportunities to {args.out}")
+
+
+if __name__ == "__main__":
+    main()
