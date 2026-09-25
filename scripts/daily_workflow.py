@@ -30,6 +30,7 @@ if hasattr(sys.stderr, "reconfigure"):
 from ats_engine import search_ats_postings
 from claim_check import load_candidate_ground_truth
 from filter_jobs import filter_job_list, parse_markdown_preferences
+from freehire_source import search_freehire
 from jobstore import merge_and_deduplicate
 from morning_brief import format_morning_brief
 from opportunity_tracks import matching_queries_for_job, search_queries_from_tracks
@@ -46,7 +47,11 @@ def run_daily_pipeline(
     tailor_top: int = 3,
     mock_input_file: Optional[str] = None,
     max_queries: int = 8,
-    max_companies: int = 0
+    max_companies: int = 0,
+    include_freehire: bool = False,
+    freehire_days: int = 30,
+    freehire_country: str = "US",
+    freehire_work_mode: str = ""
 ) -> Dict[str, Any]:
     """Executes the complete daily job search cycle."""
     today_str = date.today().isoformat()
@@ -111,14 +116,14 @@ def run_daily_pipeline(
         board_jobs = search_ats_postings(target_companies, query="")
 
         discovered: Dict[str, Dict[str, Any]] = {}
-        for job in board_jobs:
-            matched_queries = matching_queries_for_job(job, search_queries)
-            if search_queries and not matched_queries:
-                continue
 
+        def add_discovered(job: Dict[str, Any], matched_queries: List[str]) -> None:
+            # Prefer the original application URL as the cross-source identity.
+            # This lets a supplemental aggregator collapse into a direct ATS
+            # record when both point at the same employer posting.
             key = (
-                job.get("canonical_url")
-                or job.get("apply_url")
+                job.get("apply_url")
+                or job.get("canonical_url")
                 or job.get("id")
                 or "|".join(
                     [
@@ -128,10 +133,58 @@ def run_daily_pipeline(
                     ]
                 )
             )
+            if key in discovered:
+                existing = discovered[key]
+                existing_queries = existing.setdefault("discovery_queries", [])
+                for matched_query in matched_queries:
+                    if matched_query and matched_query not in existing_queries:
+                        existing_queries.append(matched_query)
+                existing_sources = existing.setdefault(
+                    "discovered_via", [existing.get("source", "unknown")]
+                )
+                source = job.get("source", "unknown")
+                if source not in existing_sources:
+                    existing_sources.append(source)
+                # Direct employer records outrank supplemental aggregator copies.
+                if (
+                    existing.get("source_type") != "ats_direct"
+                    and job.get("source_type") == "ats_direct"
+                ):
+                    preserved_queries = list(existing_queries)
+                    preserved_sources = list(existing_sources)
+                    discovered[key] = dict(job)
+                    discovered[key]["discovery_queries"] = preserved_queries
+                    discovered[key]["discovered_via"] = preserved_sources
+                return
+
             job_copy = dict(job)
-            job_copy["discovery_queries"] = matched_queries
+            job_copy["discovery_queries"] = list(matched_queries)
+            job_copy["discovered_via"] = [job.get("source", "unknown")]
             discovered[key] = job_copy
 
+        for job in board_jobs:
+            matched_queries = matching_queries_for_job(job, search_queries)
+            if search_queries and not matched_queries:
+                continue
+            add_discovered(job, matched_queries)
+
+        if include_freehire:
+            print(
+                "    Supplemental source enabled: FreeHire public API "
+                f"({freehire_days}d, country={freehire_country or 'any'})"
+            )
+            for search_query in search_queries:
+                if not search_query:
+                    continue
+                supplemental_jobs = search_freehire(
+                    search_query,
+                    posted_within_days=freehire_days,
+                    country=freehire_country,
+                    work_mode=freehire_work_mode,
+                    limit=50,
+                )
+                for job in supplemental_jobs:
+                    add_discovered(job, [search_query])
 
         raw_jobs = list(discovered.values())
 
@@ -216,7 +269,8 @@ def run_daily_pipeline(
         "tailored_count": len(tailored_map),
         "brief_path": brief_path,
         "top_jobs": top_10,
-        "search_queries": search_queries
+        "search_queries": search_queries,
+        "include_freehire": include_freehire
     }
 
 
@@ -240,6 +294,28 @@ def main():
         default=0,
         help="Maximum ATS companies to scan; 0 means the full registry"
     )
+    parser.add_argument(
+        "--include-freehire",
+        action="store_true",
+        help="Supplement direct ATS discovery with FreeHire's public multi-company tech-job API"
+    )
+    parser.add_argument(
+        "--freehire-days",
+        type=int,
+        default=30,
+        help="Only request FreeHire postings from the last N days"
+    )
+    parser.add_argument(
+        "--freehire-country",
+        default="US",
+        help="FreeHire country facet (ISO-3166 alpha-2); empty string disables country filtering"
+    )
+    parser.add_argument(
+        "--freehire-work-mode",
+        choices=["", "remote", "hybrid", "onsite"],
+        default="",
+        help="Optional FreeHire work-mode facet"
+    )
 
     args = parser.parse_args()
 
@@ -259,7 +335,11 @@ def main():
         tailor_top=args.tailor_top,
         mock_input_file=args.fixture,
         max_queries=args.max_queries,
-        max_companies=args.max_companies
+        max_companies=args.max_companies,
+        include_freehire=args.include_freehire,
+        freehire_days=args.freehire_days,
+        freehire_country=args.freehire_country,
+        freehire_work_mode=args.freehire_work_mode
     )
 
 
