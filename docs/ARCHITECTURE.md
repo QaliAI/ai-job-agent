@@ -8,7 +8,7 @@
     [1. Candidate Ground Truth]        |        [2. Direct Public ATS Feeds]
     --------------------------         |        ----------------------------
     candidate/MASTER_PROFILE.md        |        Greenhouse  Lever    Ashby
-    candidate/SEARCH_PREFERENCES.md    |        Workday     Recruitee  SmartRecruiters
+    candidate/SEARCH_PREFERENCES.md    |        Workable    Recruitee  SmartRecruiters
     candidate/VERIFIED_ACHIEVEMENTS.md |        Personio    BambooHR  Teamtailor
     candidate/skills.json              |                    |
                  |                     |                    v
@@ -64,7 +64,7 @@
 ```json
 {
   "id": "hash16",
-  "source": "greenhouse|lever|ashby|smartrecruiters|workable|recruitee|personio|bamboohr|teamtailor|workday",
+  "source": "greenhouse|lever|ashby|smartrecruiters|workable|recruitee|personio|bamboohr|teamtailor",
   "source_type": "ats_direct",
   "company": "Company Name",
   "title": "Role Title",
