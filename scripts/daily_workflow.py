@@ -27,8 +27,10 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+from apply_assistant import prepare_application_packet
 from ats_engine import search_ats_postings
 from claim_check import load_candidate_ground_truth
+from email_notifier import render_html_brief, send_email_brief
 from filter_jobs import filter_job_list, parse_markdown_preferences
 from jobstore import merge_and_deduplicate
 from morning_brief import format_morning_brief
@@ -43,7 +45,11 @@ def run_daily_pipeline(
     jobs_dir: str = "jobs",
     query: str = "",
     tailor_top: int = 3,
-    mock_input_file: Optional[str] = None
+    mock_input_file: Optional[str] = None,
+    concurrency: int = 8,
+    all_companies: bool = False,
+    notify_email: bool = False,
+    prep_applications: bool = False
 ) -> Dict[str, Any]:
     """Executes the complete daily job search cycle."""
     today_str = date.today().isoformat()
@@ -58,7 +64,7 @@ def run_daily_pipeline(
     prefs = parse_markdown_preferences(prefs_file) if os.path.exists(prefs_file) else {}
 
     search_query = query or (profile.get("target_titles", [""])[0] if profile.get("target_titles") else "")
-    print(f"    Candidate: {profile.get('title', 'Software Engineer')} | Query: '{search_query}'")
+    print(f"    Candidate: {profile.get('title', 'Professional')} | Query: '{search_query}'")
 
     # Step 2: Fetch raw postings
     raw_jobs: List[Dict[str, Any]] = []
@@ -67,21 +73,21 @@ def run_daily_pipeline(
         with open(mock_input_file, "r", encoding="utf-8") as f:
             raw_jobs = json.load(f)
     else:
-        print("🌐 [2/8] Querying direct employer ATS boards (Greenhouse, Lever, Ashby, SmartRecruiters)...")
+        print("🌐 [2/8] Querying direct employer ATS boards concurrently...")
         registry_path = os.path.join("knowledge", "ats_patterns.json")
         companies = []
         if os.path.exists(registry_path):
             with open(registry_path, "r", encoding="utf-8") as f:
                 companies = json.load(f).get("companies", [])
-        
-        # Pull from top 10 companies by default to keep scan fast and clean
-        target_companies = companies[:12] if companies else [
+
+        target_companies = companies if all_companies else (companies[:15] if companies else [
             {"name": "Stripe", "ats": "greenhouse", "token": "stripe"},
             {"name": "Ramp", "ats": "ashby", "token": "ramp"},
             {"name": "Linear", "ats": "ashby", "token": "linear"},
             {"name": "Anthropic", "ats": "lever", "token": "anthropic"}
-        ]
-        raw_jobs = search_ats_postings(target_companies, query=search_query)
+        ])
+        print(f"    Scanning {len(target_companies)} company ATS feeds with {concurrency} workers...")
+        raw_jobs = search_ats_postings(target_companies, query=search_query, max_workers=concurrency)
 
     print(f"    Found {len(raw_jobs)} total postings.")
 
@@ -114,8 +120,9 @@ def run_daily_pipeline(
     top_10 = scored_jobs[:10]
     print(f"    Scored {len(scored_jobs)} jobs. Top score: {top_10[0].get('fit_score', 0) if top_10 else 0}/100")
 
-    # Step 7: Auto-Tailor Top 1-3 Resumes with QA Check
+    # Step 7: Auto-Tailor Top 1-3 Resumes & Prepare Application Dossiers
     tailored_map = {}
+    apps_prepared = []
     if tailor_top > 0 and top_10:
         print(f"✍️  [7/8] Tailoring grounded resumes for top {min(tailor_top, len(top_10))} opportunities...")
         for j in top_10[:tailor_top]:
@@ -124,7 +131,7 @@ def run_daily_pipeline(
             slug = re.sub(r"[^a-zA-Z0-9_-]", "-", j.get("title", "role").lower())[:30]
             out_filename = f"{today_str}_{comp}_{slug}.md"
             out_path = os.path.join(resumes_dir, out_filename)
-            
+
             try:
                 tailored_md, qa_rep = tailor_resume(candidate_dir, j)
                 with open(out_path, "w", encoding="utf-8") as f:
@@ -132,10 +139,14 @@ def run_daily_pipeline(
                 tailored_map[jid] = os.path.relpath(out_path).replace("\\", "/")
                 qa_status = "✅ PASSED" if qa_rep["passed"] else f"⚠️ {qa_rep['violation_count']} QA flags"
                 print(f"    → Tailored {j.get('company')} ({j.get('title')}) | QA: {qa_status}")
+
+                if prep_applications:
+                    app_res = prepare_application_packet(candidate_dir, j, output_root=output_dir)
+                    apps_prepared.append(app_res["app_dir"])
             except Exception as e:
                 sys.stderr.write(f"    Error tailoring resume for {j.get('company')}: {e}\n")
 
-    # Step 8: Generate Daily Morning Brief
+    # Step 8: Generate Daily Morning Brief (Markdown & Responsive HTML)
     print("🌅 [8/8] Generating signature Daily Morning Brief...")
     brief_md = format_morning_brief(
         top_10,
@@ -153,7 +164,30 @@ def run_daily_pipeline(
     with open(latest_brief_path, "w", encoding="utf-8") as f:
         f.write(brief_md)
 
-    print(f"\n✨ Daily job search complete! Morning brief saved to:\n   📄 {brief_path}\n")
+    # HTML Email Brief
+    brief_html = render_html_brief(
+        top_10,
+        profile,
+        total_scanned=len(raw_jobs),
+        total_filtered=len(passed_jobs),
+        tailored_files=tailored_map
+    )
+    latest_html_path = os.path.join(output_dir, "latest_brief.html")
+    with open(latest_html_path, "w", encoding="utf-8") as f:
+        f.write(brief_html)
+
+    email_status = None
+    if notify_email:
+        email_status = send_email_brief(
+            brief_html,
+            subject=f"🌅 Daily Job Search Brief — {today_str}",
+            to_addr=profile.get("email"),
+            preview_path=latest_html_path
+        )
+
+    print(f"\n✨ Daily job search complete! Morning briefs generated:")
+    print(f"   📄 Markdown: {brief_path}")
+    print(f"   🌐 HTML:     {latest_html_path}\n")
 
     return {
         "status": "success",
@@ -163,6 +197,9 @@ def run_daily_pipeline(
         "top_jobs_count": len(top_10),
         "tailored_count": len(tailored_map),
         "brief_path": brief_path,
+        "html_brief_path": latest_html_path,
+        "applications_prepared": len(apps_prepared),
+        "email_status": email_status,
         "top_jobs": top_10
     }
 
@@ -175,6 +212,10 @@ def main():
     parser.add_argument("--query", default="", help="Search query override")
     parser.add_argument("--tailor-top", type=int, default=3, help="Number of top jobs to auto-tailor")
     parser.add_argument("--fixture", help="Path to fixture JSON for offline/testing runs")
+    parser.add_argument("--workers", type=int, default=8, help="Number of concurrent worker threads")
+    parser.add_argument("--all-companies", action="store_true", help="Query all companies in registry")
+    parser.add_argument("--notify-email", action="store_true", help="Send HTML brief via email")
+    parser.add_argument("--prep-applications", action="store_true", help="Generate full application answer dossiers")
 
     args = parser.parse_args()
 
@@ -192,7 +233,11 @@ def main():
         jobs_dir=args.jobs,
         query=args.query,
         tailor_top=args.tailor_top,
-        mock_input_file=args.fixture
+        mock_input_file=args.fixture,
+        concurrency=args.workers,
+        all_companies=args.all_companies,
+        notify_email=args.notify_email,
+        prep_applications=args.prep_applications
     )
 
 
