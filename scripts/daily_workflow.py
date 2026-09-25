@@ -32,7 +32,7 @@ from claim_check import load_candidate_ground_truth
 from filter_jobs import filter_job_list, parse_markdown_preferences
 from jobstore import merge_and_deduplicate
 from morning_brief import format_morning_brief
-from opportunity_tracks import search_queries_from_tracks
+from opportunity_tracks import matching_queries_for_job, search_queries_from_tracks
 from scorer import load_candidate_profile, score_job_list
 from tailor_engine import tailor_resume
 from verify_postings import verify_job_list
@@ -45,7 +45,8 @@ def run_daily_pipeline(
     query: str = "",
     tailor_top: int = 3,
     mock_input_file: Optional[str] = None,
-    max_queries: int = 8
+    max_queries: int = 8,
+    max_companies: int = 0
 ) -> Dict[str, Any]:
     """Executes the complete daily job search cycle."""
     today_str = date.today().isoformat()
@@ -87,8 +88,8 @@ def run_daily_pipeline(
             raw_jobs = json.load(f)
     else:
         print(
-            "🌐 [2/8] Querying direct employer ATS boards across "
-            f"{len(search_queries)} opportunity queries..."
+            "🌐 [2/8] Fetching direct employer ATS boards once, then "
+            f"matching locally across {len(search_queries)} opportunity queries..."
         )
         registry_path = os.path.join("knowledge", "ats_patterns.json")
         companies = []
@@ -96,39 +97,41 @@ def run_daily_pipeline(
             with open(registry_path, "r", encoding="utf-8") as f:
                 companies = json.load(f).get("companies", [])
 
-        # Pull from a bounded company set; query breadth is controlled separately
-        # so multi-track candidates do not get reduced to one professional identity.
-        target_companies = companies[:12] if companies else [
+        target_companies = companies if companies else [
             {"name": "Stripe", "ats": "greenhouse", "token": "stripe"},
             {"name": "Ramp", "ats": "ashby", "token": "ramp"},
             {"name": "Linear", "ats": "ashby", "token": "linear"},
             {"name": "Anthropic", "ats": "lever", "token": "anthropic"}
         ]
+        if max_companies and max_companies > 0:
+            target_companies = target_companies[:max_companies]
+
+        # Fetch each company board once. Re-querying the same board for every
+        # title wastes requests and made the old workflow both narrow and costly.
+        board_jobs = search_ats_postings(target_companies, query="")
 
         discovered: Dict[str, Dict[str, Any]] = {}
-        for search_query in search_queries:
-            batch = search_ats_postings(target_companies, query=search_query)
-            for job in batch:
-                key = (
-                    job.get("canonical_url")
-                    or job.get("apply_url")
-                    or job.get("id")
-                    or "|".join(
-                        [
-                            str(job.get("company", "")).lower(),
-                            str(job.get("title", "")).lower(),
-                            str(job.get("location", "")).lower(),
-                        ]
-                    )
+        for job in board_jobs:
+            matched_queries = matching_queries_for_job(job, search_queries)
+            if search_queries and not matched_queries:
+                continue
+
+            key = (
+                job.get("canonical_url")
+                or job.get("apply_url")
+                or job.get("id")
+                or "|".join(
+                    [
+                        str(job.get("company", "")).lower(),
+                        str(job.get("title", "")).lower(),
+                        str(job.get("location", "")).lower(),
+                    ]
                 )
-                if key not in discovered:
-                    job_copy = dict(job)
-                    job_copy["discovery_queries"] = [search_query] if search_query else []
-                    discovered[key] = job_copy
-                elif search_query:
-                    existing_queries = discovered[key].setdefault("discovery_queries", [])
-                    if search_query not in existing_queries:
-                        existing_queries.append(search_query)
+            )
+            job_copy = dict(job)
+            job_copy["discovery_queries"] = matched_queries
+            discovered[key] = job_copy
+
 
         raw_jobs = list(discovered.values())
 
@@ -231,6 +234,12 @@ def main():
         default=8,
         help="Maximum number of balanced opportunity-track queries per run"
     )
+    parser.add_argument(
+        "--max-companies",
+        type=int,
+        default=0,
+        help="Maximum ATS companies to scan; 0 means the full registry"
+    )
 
     args = parser.parse_args()
 
@@ -249,7 +258,8 @@ def main():
         query=args.query,
         tailor_top=args.tailor_top,
         mock_input_file=args.fixture,
-        max_queries=args.max_queries
+        max_queries=args.max_queries,
+        max_companies=args.max_companies
     )
 
 
