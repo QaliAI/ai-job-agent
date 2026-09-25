@@ -11,7 +11,9 @@ Connects directly to public, keyless employer career endpoints:
 - BambooHR (bamboohr.com)
 - Personio (jobs.personio.de/xml)
 - Teamtailor (teamtailor.com/jobs.rss)
-- Workday (wday/cxs endpoints)
+
+Workday CXS is documented in docs/JOB-SOURCES.md but is not yet wired into
+the dispatcher because it requires per-board host/tenant/site configuration.
 
 Converts all postings into the canonical AI Job Agent job schema.
 Zero external dependencies (pure Python standard library).
@@ -338,6 +340,85 @@ def parse_smartrecruiters(token: str, query: str = "") -> List[Dict[str, Any]]:
     return results
 
 
+
+def parse_workable(token: str, query: str = "") -> List[Dict[str, Any]]:
+    """Pull jobs from Workable's public account widget endpoint."""
+    url = f"https://apply.workable.com/api/v1/widget/accounts/{token}?details=true"
+    data = fetch_json(url)
+    if not data or not isinstance(data, dict):
+        return []
+
+    jobs = data.get("jobs") or []
+    if not isinstance(jobs, list):
+        return []
+
+    company_name = str(data.get("name") or token).strip()
+    results: List[Dict[str, Any]] = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    for item in jobs:
+        if not isinstance(item, dict):
+            continue
+
+        title = str(item.get("title") or "").strip()
+        desc = clean_html(item.get("description") or "")
+        haystack = f"{title} {desc}".lower()
+        if query and query.lower() not in haystack:
+            continue
+
+        city = str(item.get("city") or "").strip()
+        state = str(item.get("state") or "").strip()
+        country = str(item.get("country") or "").strip()
+        location_parts = [part for part in [city, state, country] if part]
+        location = ", ".join(location_parts)
+
+        telecommuting = bool(item.get("telecommuting"))
+        if telecommuting:
+            location = f"{location}, Remote" if location else "Remote"
+
+        raw_id = str(item.get("shortcode") or item.get("id") or "").strip()
+        apply_url = str(item.get("url") or "").strip()
+        if not apply_url:
+            apply_url = (
+                f"https://apply.workable.com/j/{raw_id}/"
+                if raw_id
+                else f"https://apply.workable.com/{token}/"
+            )
+
+        sal_min, sal_max, currency = extract_salary(desc)
+        work_mode = "remote" if telecommuting else infer_work_mode(title, location, desc)
+
+        canonical_job = {
+            "id": generate_job_id(
+                "workable", token, title, location, raw_id=raw_id or apply_url
+            ),
+            "source": "workable",
+            "source_type": "ats_direct",
+            "company": company_name,
+            "title": title,
+            "location": location,
+            "work_mode": work_mode,
+            "salary_min": sal_min,
+            "salary_max": sal_max,
+            "currency": currency,
+            "employment_type": str(
+                item.get("employment_type")
+                or item.get("employmentType")
+                or "Full-time"
+            ),
+            "description": desc,
+            "posted_at": item.get("published_on") or item.get("created_at"),
+            "first_seen_at": now_iso,
+            "last_verified_at": now_iso,
+            "apply_url": apply_url,
+            "canonical_url": apply_url,
+            "is_live": True,
+        }
+        results.append(canonical_job)
+
+    return results
+
+
 def parse_recruitee(token: str, query: str = "") -> List[Dict[str, Any]]:
     """Pulls jobs from Recruitee public offers API."""
     url = f"https://{token}.recruitee.com/api/offers/"
@@ -548,6 +629,7 @@ ATS_PARSERS = {
     "lever": parse_lever,
     "ashby": parse_ashby,
     "smartrecruiters": parse_smartrecruiters,
+    "workable": parse_workable,
     "recruitee": parse_recruitee,
     "bamboohr": parse_bamboohr,
     "personio": parse_personio,
@@ -587,6 +669,7 @@ def main():
     parser.add_argument("--lever", help="Comma-separated Lever company tokens (e.g. netflix,spotify)")
     parser.add_argument("--ashby", help="Comma-separated Ashby company tokens (e.g. ramp,linear,notion)")
     parser.add_argument("--smartrecruiters", help="Comma-separated SmartRecruiters tokens (e.g. visa,ikea)")
+    parser.add_argument("--workable", help="Comma-separated Workable account slugs")
     parser.add_argument("--recruitee", help="Comma-separated Recruitee tokens (e.g. hotjar)")
     parser.add_argument("--bamboohr", help="Comma-separated BambooHR tokens")
     parser.add_argument("--personio", help="Comma-separated Personio tokens (e.g. n26)")
@@ -606,7 +689,7 @@ def main():
         except Exception as e:
             sys.stderr.write(f"Error reading registry {args.registry}: {e}\n")
 
-    for ats in ["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "bamboohr", "personio", "teamtailor"]:
+    for ats in ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "recruitee", "bamboohr", "personio", "teamtailor"]:
         val = getattr(args, ats)
         if val:
             for token in val.split(","):
