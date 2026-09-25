@@ -20,6 +20,7 @@
 
 ## 2. In-Session Commands
 Claude Code will automatically detect all skills in `skills/`:
+* `/personal-job-agent` — Canonical per-person workflow (`job-agent run --profile <name>`). Same script the terminal uses. No auto-apply.
 * `/daily-brief` — Runs the morning job search pipeline, scores opportunities, and produces the daily summary.
 * `/find-jobs` — Scans direct employer ATS boards (Greenhouse, Lever, Ashby, SmartRecruiters, etc.).
 * `/score-fit` — Evaluates a pasted job description against your `candidate/MASTER_PROFILE.md`.

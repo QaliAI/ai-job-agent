@@ -3,3 +3,6 @@
 # Edit your crontab using: crontab -e
 
 0 8 * * 1-5 cd /path/to/ai-job-agent && /usr/bin/python3 scripts/daily_workflow.py >> output/daily.log 2>&1
+
+# Named profile (digest is saved under profiles/<name>/output even if email is not configured):
+# 0 8 * * 1-5 cd /path/to/ai-job-agent && /usr/bin/python3 scripts/job_agent.py run --profile lucy >> profiles/lucy/output/daily.log 2>&1

@@ -1,0 +1,59 @@
+[
+  {
+    "id": "sample_northwind",
+    "source": "fixture",
+    "company": "Northwind Civic",
+    "title": "Customer Operations Lead",
+    "location": "Remote - US",
+    "work_mode": "remote",
+    "salary_min": 98000,
+    "salary_max": 118000,
+    "currency": "USD",
+    "description": "Customer Operations Lead for a remote US team. Required: Zendesk, SQL, and workforce scheduling. Quality assurance reviews of support macros. 5+ years of experience.",
+    "apply_url": "https://example.com/jobs/sample-northwind",
+    "posted_at": "2026-09-20T12:00:00Z",
+    "is_live": true
+  },
+  {
+    "id": "sample_harbor",
+    "source": "fixture",
+    "company": "Harbor Museum",
+    "title": "Support Operations Manager",
+    "location": "Remote - US",
+    "work_mode": "remote",
+    "description": "Support Operations Manager. Required skills: SQL and Salesforce administration for the membership desk. Remote.",
+    "apply_url": "https://example.com/jobs/sample-harbor",
+    "posted_at": "2026-09-18T12:00:00Z",
+    "is_live": true
+  },
+  {
+    "id": "sample_excluded_company",
+    "source": "fixture",
+    "company": "ExcludedCo",
+    "title": "Customer Operations Lead",
+    "location": "Remote - US",
+    "work_mode": "remote",
+    "salary_min": 100000,
+    "salary_max": 130000,
+    "currency": "USD",
+    "description": "Customer Operations Lead using Zendesk and SQL.",
+    "apply_url": "https://example.com/jobs/sample-excluded",
+    "posted_at": "2026-09-17T12:00:00Z",
+    "is_live": true
+  },
+  {
+    "id": "sample_intern",
+    "source": "fixture",
+    "company": "Bright Path",
+    "title": "Customer Operations Intern",
+    "location": "Remote - US",
+    "work_mode": "remote",
+    "salary_min": 20,
+    "salary_max": 25,
+    "currency": "USD",
+    "description": "Summer intern program.",
+    "apply_url": "https://example.com/jobs/sample-intern",
+    "posted_at": "2026-09-16T12:00:00Z",
+    "is_live": true
+  }
+]

@@ -22,7 +22,17 @@ Orchestrates the entire daily cycle of the AI Job Agent.
 10. Update persistent history ledger.
 
 ## Command
+
+For a named person, use the personal agent (one implementation for every runtime):
+
+```bash
+python scripts/job_agent.py run --profile PROFILE
+```
+
+The single-candidate pipeline is still:
+
 ```bash
 python scripts/daily_workflow.py
 ```
-Outputs the brief in `output/latest_brief.md` and displays action items.
+
+Outputs the brief in `output/latest_brief.md` and displays action items. There is no auto-apply.
