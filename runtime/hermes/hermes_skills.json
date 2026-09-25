@@ -34,6 +34,14 @@
     {
       "name": "daily-brief",
       "path": "skills/daily-brief/SKILL.md"
+    },
+    {
+      "name": "find-consulting-opportunities",
+      "path": "skills/find-consulting-opportunities/SKILL.md"
+    },
+    {
+      "name": "research-target-person",
+      "path": "skills/research-target-person/SKILL.md"
     }
   ]
 }
