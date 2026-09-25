@@ -95,6 +95,12 @@ def format_morning_brief(
             sal_str = "Not disclosed in posting"
 
         source_ats = job.get("source", "ATS").capitalize()
+        source_type = job.get("source_type", "ats_direct")
+        source_label = (
+            f"{source_ats} Direct Employer ATS"
+            if source_type == "ats_direct"
+            else f"{source_ats} Supplemental Discovery"
+        )
         apply_url = job.get("apply_url") or job.get("canonical_url", "#")
         job_id = job.get("id", "")
 
@@ -104,7 +110,7 @@ def format_morning_brief(
         md += f"### {idx}. [{company}] — {title}\n"
         md += f"* **Fit Score**: **{score}/100** | **Confidence**: {conf} | **Recommendation**: **{rec}**\n"
         md += f"* **Location**: {loc} ({wm}) | **Compensation**: {sal_str}\n"
-        md += f"* **Source**: {source_ats} Direct · **Status**: Live & Verified\n"
+        md += f"* **Source**: {source_label} · **Status**: Live & Verified\n"
         opportunity_track = fit_eval.get("opportunity_track") or {}
         if opportunity_track.get("label"):
             md += (

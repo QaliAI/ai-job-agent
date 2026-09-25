@@ -42,6 +42,22 @@
     {
       "name": "research-target-person",
       "path": "skills/research-target-person/SKILL.md"
+    },
+    {
+      "name": "find-broad-jobs",
+      "path": "skills/find-broad-jobs/SKILL.md"
+    },
+    {
+      "name": "record-outcome",
+      "path": "skills/record-outcome/SKILL.md"
+    },
+    {
+      "name": "review-search-performance",
+      "path": "skills/review-search-performance/SKILL.md"
+    },
+    {
+      "name": "refresh-candidate-brand",
+      "path": "skills/refresh-candidate-brand/SKILL.md"
     }
   ]
 }
