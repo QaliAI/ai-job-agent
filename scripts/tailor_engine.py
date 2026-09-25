@@ -22,6 +22,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from claim_check import load_candidate_ground_truth, verify_content
+from truth_guard import experience_bullet_violations
 
 
 def extract_jd_keywords(jd_text: str) -> List[str]:
@@ -100,16 +101,33 @@ def tailor_resume(
     other_skills = [s for s in sorted_skills if s not in (top_langs + top_data + top_cloud)]
 
     # 3. Grounded Summary
-    years_exp_match = re.search(r"Total Years of Experience\s*:\s*(\d+)", master_content, re.IGNORECASE)
-    years_exp = years_exp_match.group(1) if years_exp_match else "7"
-    
-    top_3_langs = ", ".join(top_langs[:3]) if top_langs else "Python, Go, and PostgreSQL"
-    summary = (
-        f"{job_title} with {years_exp} years of proven experience architecting scalable distributed systems, "
-        f"high-throughput backend services, and resilient cloud architectures in {top_3_langs}. "
-        f"Demonstrated history of driving 99.99% system reliability, performance optimization, and engineering rigor. "
-        f"Tailored specifically for {company}."
+    years_exp_match = re.search(
+        r"(?:\*\*)?Total Years of Experience(?:\*\*)?\s*:\s*(\d+)",
+        master_content,
+        re.IGNORECASE,
     )
+    years_exp = years_exp_match.group(1) if years_exp_match else None
+
+    # Extract candidate's actual professional summary from master profile if present
+    cand_summary = ""
+    sum_match = re.search(r"## (?:2\.\s*)?Professional Summary\s*([\s\S]*?)(?:## 3\.|\Z)", master_content)
+    if sum_match:
+        cand_summary = sum_match.group(1).strip()
+
+    target_line = f"*Prepared for the {job_title} role at {company}. Wording below is selected from verified experience.*"
+    if cand_summary:
+        summary = f"{cand_summary}\n\n{target_line}"
+    else:
+        top_skills_preview = ", ".join(sorted_skills[:4]) if sorted_skills else "skills listed in the profile"
+        years_bit = (
+            f"The profile records {years_exp} years of experience. "
+            if years_exp else
+            "Years of experience were not recorded in the profile. "
+        )
+        summary = (
+            f"{target_line}\n\n{years_bit}"
+            f"Skills emphasized from the verified list: {top_skills_preview}."
+        )
 
     # 4. Extract Experience Section from Master Profile
     exp_section = ""
@@ -137,6 +155,23 @@ def tailor_resume(
     if links_str:
         contact_line += f" · {links_str}"
 
+    # Build skills section adaptively
+    if top_langs or top_data or top_cloud:
+        # Technical profile formatting
+        skills_body = f"""* **Languages & Core**: {', '.join(top_langs) if top_langs else 'N/A'}
+* **Databases & Event Streams**: {', '.join(top_data) if top_data else 'N/A'}
+* **Cloud Infrastructure & DevOps**: {', '.join(top_cloud) if top_cloud else 'N/A'}"""
+        if other_skills:
+            skills_body += f"\n* **Tools & Additional Competencies**: {', '.join(other_skills)}"
+    else:
+        # General / Non-technical profile formatting
+        key_matches = [s for s in sorted_skills if s.lower() in jd_keywords]
+        remaining = [s for s in sorted_skills if s not in key_matches]
+        skills_body = f"""* **Key Target Competencies**: {', '.join(key_matches) if key_matches else ', '.join(sorted_skills[:4])}
+* **Core Professional Skills**: {', '.join(remaining if remaining else sorted_skills)}"""
+        if truth.get("transferable_skills"):
+            skills_body += f"\n* **Transferable Skills**: {', '.join(truth['transferable_skills'])}"
+
     tailored_md = f"""# {cand_name}
 {contact_line}
 
@@ -148,10 +183,7 @@ def tailor_resume(
 ---
 
 ## CORE TECHNICAL SKILLS
-* **Languages & Core**: {', '.join(top_langs)}
-* **Databases & Event Streams**: {', '.join(top_data)}
-* **Cloud Infrastructure & DevOps**: {', '.join(top_cloud)}
-* **Architectural Disciplines**: Distributed Systems, High Throughput Ingestion, API Design (REST/gRPC), Performance Tuning
+{skills_body}
 
 ---
 
@@ -165,9 +197,18 @@ def tailor_resume(
 {edu_section}
 """
 
-    # 7. Run Claim Check QA
+    # 7. Run Claim Check QA plus experience-bullet grounding
     qa_report = verify_content(tailored_md, truth, jd_desc)
-    
+    bullet_flags = experience_bullet_violations(tailored_md, truth)
+    if bullet_flags:
+        qa_report["violations"].extend(bullet_flags)
+        qa_report["violation_count"] = len(qa_report["violations"])
+        qa_report["passed"] = False
+        qa_report["status"] = "FAILED"
+        qa_report["summary"] = (
+            f"QA Check Failed: Found {qa_report['violation_count']} unsupported claim(s) requiring candidate verification."
+        )
+
     return tailored_md.strip(), qa_report
 
 

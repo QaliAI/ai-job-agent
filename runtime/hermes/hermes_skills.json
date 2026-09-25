@@ -34,6 +34,10 @@
     {
       "name": "daily-brief",
       "path": "skills/daily-brief/SKILL.md"
+    },
+    {
+      "name": "personal-job-agent",
+      "path": "skills/personal-job-agent/SKILL.md"
     }
   ]
 }

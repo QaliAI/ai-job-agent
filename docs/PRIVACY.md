@@ -21,9 +21,10 @@ The repository is configured with a strict, multi-layered `.gitignore` that guar
 * `candidate/*.pdf`, `candidate/*.docx` — 🔒 Ignored
 * `output/resumes/*` — 🔒 Ignored
 * `jobs/history.json` — 🔒 Ignored
+* `profiles/<name>/` — 🔒 Ignored (one directory per person; do not share ledgers across names)
 * `.env` / credentials — 🔒 Ignored
 
 ---
 
 ## 3. Fictional Test Fixtures Only
-The repository includes fictional candidate fixtures (`examples/jordan-taylor/`, `examples/alex-chen/`) for automated testing and documentation demonstrations. Real candidate profiles are never used in test suites or checked into version control.
+The repository includes fictional candidate fixtures (`examples/jordan-taylor/`, `examples/alex-chen/`, `examples/sample-client/`) for automated testing and documentation demonstrations. Real candidate profiles are never used in test suites or checked into version control.

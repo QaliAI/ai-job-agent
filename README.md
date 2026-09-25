@@ -105,6 +105,16 @@ python scripts/daily_workflow.py
 ```
 In seconds, your morning brief will be generated in `output/latest_brief.md` and tailored resumes will be saved to `output/resumes/`!
 
+### Personal agent for more than one person
+
+```bash
+job-agent init --profile lucy
+job-agent preflight --profile lucy
+job-agent run --profile lucy
+```
+
+Each person gets `profiles/<name>/` (gitignored). The digest, tracker, and tailored files stay in that directory. Setup steps: [docs/NEW_CLIENT_IN_10_MINUTES.md](docs/NEW_CLIENT_IN_10_MINUTES.md). There is no auto-apply.
+
 ---
 
 ## 🌅 Example Morning Brief Report
@@ -190,7 +200,7 @@ AI Job Agent adheres to the open **Agent Skills specification** (`skills/*/SKILL
 ## 🔒 Privacy Guarantee
 
 Your career history contains sensitive personal data. AI Job Agent is designed from day one to protect your privacy:
-* All files in `candidate/`, `jobs/`, and `output/` are **automatically ignored by `.gitignore`**.
+* All files in `candidate/`, `profiles/`, `jobs/`, and `output/` are **automatically ignored by `.gitignore`**. `examples/sample-client/` is synthetic and safe to commit. The files a run writes under that sample are ignored.
 * No data is ever sent to third-party tracking services or external databases.
 * For more information, read **[docs/PRIVACY.md](docs/PRIVACY.md)**.
 
@@ -205,6 +215,8 @@ Your career history contains sensitive personal data. AI Job Agent is designed f
 * **[docs/JOB-SOURCES.md](docs/JOB-SOURCES.md)** — Technical details on supported public ATS endpoints.
 * **[docs/WINDOWS.md](docs/WINDOWS.md)** & **[docs/MACOS.md](docs/MACOS.md)** — OS-specific operational guides.
 * **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Diagnostic solutions and FAQ.
+* **[docs/NEW_CLIENT_IN_10_MINUTES.md](docs/NEW_CLIENT_IN_10_MINUTES.md)** — Set up a separate profile, preflight, and daily run.
+* **[docs/OPERATOR_GUIDE.md](docs/OPERATOR_GUIDE.md)** — Internal checklist for setting the agent up for someone else.
 
 ---
 

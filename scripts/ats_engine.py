@@ -18,6 +18,7 @@ Zero external dependencies (pure Python standard library).
 """
 
 import argparse
+import concurrent.futures
 import hashlib
 import html
 import json
@@ -555,29 +556,59 @@ ATS_PARSERS = {
 }
 
 
-def search_ats_postings(companies_list: List[Dict[str, str]], query: str = "") -> List[Dict[str, Any]]:
-    """Searches across a collection of company tokens and ATS platforms."""
-    all_jobs = []
-    for comp in companies_list:
-        ats_type = comp.get("ats", "").lower()
-        token = comp.get("token", "")
-        name = comp.get("name", token)
+def fetch_company_jobs(comp: Dict[str, str], query: str = "") -> List[Dict[str, Any]]:
+    """Fetches and parses jobs for a single company descriptor."""
+    ats_type = comp.get("ats", "").lower()
+    token = comp.get("token", "")
+    name = comp.get("name", token)
+    
+    parser = ATS_PARSERS.get(ats_type)
+    if not parser:
+        sys.stderr.write(f"Unsupported ATS type: {ats_type} for company {name}\n")
+        return []
         
-        parser = ATS_PARSERS.get(ats_type)
-        if not parser:
-            sys.stderr.write(f"Unsupported ATS type: {ats_type} for company {name}\n")
-            continue
-            
-        try:
-            jobs = parser(token, query=query)
-            # Override company with display name if provided
-            for j in jobs:
-                if name:
-                    j["company"] = name
-            all_jobs.extend(jobs)
-        except Exception as e:
-            sys.stderr.write(f"Error fetching {name} ({ats_type}/{token}): {e}\n")
-            
+    try:
+        jobs = parser(token, query=query)
+        for j in jobs:
+            if name:
+                j["company"] = name
+        return jobs
+    except Exception as e:
+        sys.stderr.write(f"Error fetching {name} ({ats_type}/{token}): {e}\n")
+        return []
+
+
+def search_ats_postings(
+    companies_list: List[Dict[str, str]],
+    query: str = "",
+    max_workers: int = 8
+) -> List[Dict[str, Any]]:
+    """Searches across a collection of company tokens and ATS platforms concurrently."""
+    if not companies_list:
+        return []
+
+    # Sequential execution if only one company or workers <= 1
+    if len(companies_list) == 1 or max_workers <= 1:
+        all_jobs = []
+        for comp in companies_list:
+            all_jobs.extend(fetch_company_jobs(comp, query=query))
+        return all_jobs
+
+    all_jobs = []
+    worker_count = min(max_workers, len(companies_list))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+        future_to_comp = {
+            executor.submit(fetch_company_jobs, comp, query): comp
+            for comp in companies_list
+        }
+        for future in concurrent.futures.as_completed(future_to_comp):
+            try:
+                jobs = future.result()
+                all_jobs.extend(jobs)
+            except Exception as e:
+                comp = future_to_comp.get(future, {})
+                sys.stderr.write(f"Error executing fetch for {comp.get('name', 'company')}: {e}\n")
+
     return all_jobs
 
 
@@ -593,6 +624,7 @@ def main():
     parser.add_argument("--teamtailor", help="Comma-separated Teamtailor tokens (e.g. zalando)")
     parser.add_argument("--registry", help="Path to JSON file containing company tokens")
     parser.add_argument("--query", default="", help="Keyword / title filter")
+    parser.add_argument("--workers", type=int, default=8, help="Number of concurrent worker threads")
     parser.add_argument("--out", help="Path to save output JSON (defaults to stdout)")
 
     args = parser.parse_args()

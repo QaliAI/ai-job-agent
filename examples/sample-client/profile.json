@@ -1,0 +1,35 @@
+{
+  "name": "Avery Quinn",
+  "sample": true,
+  "label": "SAMPLE CLIENT. Synthetic person. Not a real client and not a real resume.",
+  "source_resume": "resume.md",
+  "target_titles": ["Customer Operations Lead", "Support Operations Manager"],
+  "acceptable_titles": ["Customer Support Manager"],
+  "excluded_titles": ["Intern", "Junior"],
+  "seniority": "lead",
+  "locations": ["Remote - US", "Austin, TX"],
+  "work_mode": "remote",
+  "salary": {
+    "min": 90000,
+    "max": 120000,
+    "currency": "USD"
+  },
+  "industries": ["Customer Operations"],
+  "preferred_companies": ["Northwind Civic"],
+  "excluded_companies": ["ExcludedCo"],
+  "skills": ["Zendesk", "SQL", "Workforce Scheduling", "Quality Assurance"],
+  "work_authorization": "Sample value only: authorized to work in the US. Not a real status.",
+  "travel": "occasional",
+  "notification": {
+    "channel": "file",
+    "to": null
+  },
+  "jobs_per_digest": 10,
+  "portals": {
+    "enabled": false
+  },
+  "search": {
+    "fixture": "fixtures/jobs.json",
+    "offline": true
+  }
+}

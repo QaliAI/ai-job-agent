@@ -22,6 +22,31 @@ if hasattr(sys.stderr, "reconfigure"):
 
 
 DEFAULT_STORE_PATH = os.path.join("jobs", "history.json")
+LIFECYCLE_STATUSES = ("new", "saved", "applied", "interview", "rejected", "archived")
+
+
+def _fresh_record(job: Dict[str, Any], now_iso: str) -> Dict[str, Any]:
+    return {
+        "id": job.get("id"),
+        "company": job.get("company"),
+        "title": job.get("title"),
+        "location": job.get("location"),
+        "apply_url": job.get("apply_url"),
+        "source": job.get("source"),
+        "first_seen": now_iso,
+        "first_seen_at": now_iso,
+        "last_seen": now_iso,
+        "last_verified_at": now_iso,
+        "score": None,
+        "status": "new",
+        "user_status": "unseen",
+        "applied": False,
+        "interview": False,
+        "rejected": False,
+        "archived": False,
+        "notes": "",
+        "is_live": job.get("is_live", True),
+    }
 
 
 def load_store(store_path: str = DEFAULT_STORE_PATH) -> Dict[str, Any]:
@@ -70,32 +95,38 @@ def merge_and_deduplicate(
             dupes_count += 1
             existing_record = stored_jobs[job_id]
             # Preserve original first_seen_at
-            job["first_seen_at"] = existing_record.get("first_seen_at", now_iso)
+            first_seen = existing_record.get("first_seen") or existing_record.get("first_seen_at", now_iso)
+            job["first_seen"] = first_seen
+            job["first_seen_at"] = first_seen
+            job["last_seen"] = now_iso
             job["last_verified_at"] = now_iso
             job["is_new"] = False
             job["user_status"] = existing_record.get("user_status", "unseen")
+            job["status"] = existing_record.get("status", "new")
             
-            # Update store record
+            # Update store record without resetting lifecycle flags
+            existing_record["first_seen"] = first_seen
+            existing_record["first_seen_at"] = first_seen
+            existing_record["last_seen"] = now_iso
             existing_record["last_verified_at"] = now_iso
             existing_record["is_live"] = job.get("is_live", True)
+            existing_record.setdefault("score", None)
+            existing_record.setdefault("status", "new")
+            existing_record.setdefault("applied", False)
+            existing_record.setdefault("interview", False)
+            existing_record.setdefault("rejected", False)
+            existing_record.setdefault("archived", False)
+            existing_record.setdefault("notes", "")
         else:
+            record = _fresh_record(job, now_iso)
+            job["first_seen"] = now_iso
             job["first_seen_at"] = now_iso
+            job["last_seen"] = now_iso
             job["last_verified_at"] = now_iso
             job["is_new"] = True
             job["user_status"] = "unseen"
-            
-            # Add to store
-            stored_jobs[job_id] = {
-                "id": job_id,
-                "company": job.get("company"),
-                "title": job.get("title"),
-                "location": job.get("location"),
-                "apply_url": job.get("apply_url"),
-                "first_seen_at": now_iso,
-                "last_verified_at": now_iso,
-                "user_status": "unseen",
-                "is_live": job.get("is_live", True)
-            }
+            job["status"] = "new"
+            stored_jobs[job_id] = record
             new_list.append(job)
             
         enriched_list.append(job)
@@ -110,13 +141,76 @@ Tuple_Merged = tuple[List[Dict[str, Any]], List[Dict[str, Any]], int]
 
 def update_job_status(job_id: str, status: str, store_path: str = DEFAULT_STORE_PATH) -> bool:
     """Updates a job's user_status (e.g. 'applied', 'skipped', 'interviewing')."""
+    return set_lifecycle(job_id, status, store_path)
+
+
+def set_lifecycle(
+    job_id: str,
+    status: str,
+    store_path: str = DEFAULT_STORE_PATH,
+    notes: Optional[str] = None,
+) -> bool:
+    """Set the current lifecycle status and the matching sticky flag."""
     store = load_store(store_path)
-    if job_id in store.get("jobs", {}):
-        store["jobs"][job_id]["user_status"] = status
-        store["jobs"][job_id]["status_updated_at"] = datetime.now(timezone.utc).isoformat()
+    record = store.get("jobs", {}).get(job_id)
+    if record is None:
+        return False
+    normalized = (status or "").strip().lower()
+    if normalized == "interviewing":
+        normalized = "interview"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    record["user_status"] = normalized
+    record["status_updated_at"] = now_iso
+    record["last_seen"] = record.get("last_seen") or now_iso
+    if normalized in LIFECYCLE_STATUSES:
+        record["status"] = normalized
+        if normalized == "applied":
+            record["applied"] = True
+        elif normalized == "interview":
+            record["interview"] = True
+        elif normalized == "rejected":
+            record["rejected"] = True
+        elif normalized == "archived":
+            record["archived"] = True
+    else:
+        record["status"] = record.get("status") or normalized
+    if notes is not None:
+        record["notes"] = notes
+    record.setdefault("notes", "")
+    record.setdefault("applied", False)
+    record.setdefault("interview", False)
+    record.setdefault("rejected", False)
+    record.setdefault("archived", False)
+    record.setdefault("score", None)
+    record.setdefault("first_seen", record.get("first_seen_at"))
+    save_store(store, store_path)
+    return True
+
+
+def record_run_outcomes(store_path: str, jobs: List[Dict[str, Any]]) -> None:
+    """Write score and last_seen for jobs already in this profile's ledger."""
+    store = load_store(store_path)
+    stored = store.get("jobs", {})
+    now_iso = datetime.now(timezone.utc).isoformat()
+    changed = False
+    for job in jobs:
+        job_id = job.get("id")
+        if not job_id or job_id not in stored:
+            continue
+        record = stored[job_id]
+        record["score"] = job.get("fit_score")
+        record["last_seen"] = now_iso
+        record.setdefault("first_seen", record.get("first_seen_at"))
+        record.setdefault("status", "new")
+        record.setdefault("applied", False)
+        record.setdefault("interview", False)
+        record.setdefault("rejected", False)
+        record.setdefault("archived", False)
+        record.setdefault("notes", "")
+        changed = True
+    if changed or stored:
+        store["jobs"] = stored
         save_store(store, store_path)
-        return True
-    return False
 
 
 def main():

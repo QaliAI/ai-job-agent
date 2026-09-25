@@ -1,10 +1,22 @@
 # PowerShell Script to Schedule Daily AI Job Agent Search on Windows Task Scheduler
 # Run in PowerShell: powershell -ExecutionPolicy Bypass -File .\runtime\scheduling\windows_schedule.ps1
+# Named profile: powershell -ExecutionPolicy Bypass -File .\runtime\scheduling\windows_schedule.ps1 -Profile lucy
+
+param(
+    [string]$Profile = ""
+)
 
 $TaskName = "AIJobAgentDailySearch"
 $ScriptDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $PythonPath = (Get-Command python).Source
-$ActionScript = Join-Path $ScriptDir "scripts\daily_workflow.py"
+if ($Profile) {
+    $TaskName = "AIJobAgentDailySearch-$Profile"
+    $ActionScript = Join-Path $ScriptDir "scripts\job_agent.py"
+    $ActionArgs = "`"$ActionScript`" run --profile $Profile"
+} else {
+    $ActionScript = Join-Path $ScriptDir "scripts\daily_workflow.py"
+    $ActionArgs = "`"$ActionScript`""
+}
 
 Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host "   Scheduling AI Job Agent Daily Search on Windows   " -ForegroundColor Cyan
@@ -15,7 +27,7 @@ Write-Host "Script Target:     $ActionScript"
 Write-Host ""
 
 # Define Task Action
-$Action = New-ScheduledTaskAction -Execute $PythonPath -Argument "`"$ActionScript`"" -WorkingDirectory $ScriptDir
+$Action = New-ScheduledTaskAction -Execute $PythonPath -Argument $ActionArgs -WorkingDirectory $ScriptDir
 
 # Define Task Trigger (Daily at 8:00 AM)
 $Trigger = New-ScheduledTaskTrigger -Daily -At 8:00AM

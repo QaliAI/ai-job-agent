@@ -37,7 +37,9 @@ def test_no_real_pii_in_repository_files():
     files_to_check = [
         "templates/MASTER_PROFILE_TEMPLATE.md",
         "examples/jordan-taylor/MASTER_PROFILE.md",
-        "examples/alex-chen/MASTER_PROFILE.md"
+        "examples/alex-chen/MASTER_PROFILE.md",
+        "examples/sample-client/MASTER_PROFILE.md",
+        "examples/sample-client/resume.md"
     ]
     
     for fpath in files_to_check:

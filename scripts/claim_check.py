@@ -20,6 +20,8 @@ import re
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from truth_guard import factual_invention_violations
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
@@ -163,6 +165,8 @@ def verify_content(
                             "snippet": line.strip(),
                             "detail": f"Metric '{dm}' does not appear in candidate's VERIFIED_ACHIEVEMENTS.md or master profile."
                         })
+
+    violations.extend(factual_invention_violations(draft_content, truth))
 
     # Calculate QA status
     passed = len(violations) == 0

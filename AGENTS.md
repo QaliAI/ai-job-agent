@@ -29,3 +29,5 @@ allowed-tools: Read, Write, RunCommand
 ---
 ```
 When invoked by an AI agent, skills read candidate truth from `candidate/`, execute deterministic Python helpers in `scripts/`, run Claim Check QA verification, and write results to `output/`.
+
+For a named person, the only workflow entry is `python scripts/job_agent.py` (`run`, `digest`, `report`, `status`, `preflight`) with `--profile <name>`. Read and write that profile directory only. Do not copy `jobs/` or `output/` between profiles. Do not auto-apply.
