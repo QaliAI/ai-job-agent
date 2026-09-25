@@ -17,7 +17,7 @@ AI Job Agent connects directly to first-party Applicant Tracking System (ATS) pu
 | **BambooHR** | `https://{token}.bamboohr.com/careers/list` | JSON | Keyless | Public careers list endpoint. |
 | **Personio** | `https://{token}.jobs.personio.de/xml` | XML | Keyless | Clean XML feed containing positions, offices, and job descriptions. |
 | **Teamtailor** | `https://{token}.teamtailor.com/jobs.rss` | RSS / XML | Keyless | Public RSS feed common at European startups. |
-| **Workday** | `https://{tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` | JSON (POST) | Keyless | CXS endpoint accepts structured pagination and search queries. |
+
 
 ---
 
@@ -30,3 +30,8 @@ Example:
 ```bash
 python scripts/discover_ats.py linear --add-to-registry knowledge/ats_patterns.json
 ```
+
+
+## Documented but not yet wired: Workday
+
+Workday commonly exposes a public CXS endpoint at `https://{tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs`, using POST pagination. The current AI Job Agent dispatcher does **not** claim Workday support yet because a reliable implementation needs per-board `host`, `tenant`, and `site` configuration rather than the single-token registry schema used by the other adapters. Do not add a Workday company to `knowledge/ats_patterns.json` until that adapter is implemented and tested.
