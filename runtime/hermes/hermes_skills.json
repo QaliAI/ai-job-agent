@@ -54,6 +54,10 @@
     {
       "name": "review-search-performance",
       "path": "skills/review-search-performance/SKILL.md"
+    },
+    {
+      "name": "refresh-candidate-brand",
+      "path": "skills/refresh-candidate-brand/SKILL.md"
     }
   ]
 }
