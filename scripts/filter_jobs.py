@@ -50,6 +50,31 @@ def _extract_bullets(section: str) -> List[str]:
     return values
 
 
+def _extract_nested_bullets(section: str, label: str) -> List[str]:
+    """Extract only the indented bullet list belonging to a named parent bullet."""
+    lines = section.splitlines()
+    collecting = False
+    values: List[str] = []
+
+    for line in lines:
+        if not collecting:
+            if re.search(re.escape(label), line, re.IGNORECASE):
+                collecting = True
+            continue
+
+        # A new top-level bullet ends this field.
+        if re.match(r"^[-*]\\s+", line):
+            break
+
+        match = re.match(r"^\\s{2,}[-*]\\s+(.*)$", line)
+        if match:
+            value = match.group(1).strip()
+            if value:
+                values.append(value)
+
+    return values
+
+
 def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
     """Parse SEARCH_PREFERENCES.md into structured criteria.
 
@@ -100,12 +125,9 @@ def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
                 prefs["work_mode"] = "onsite"
 
         location_section = _extract_section(content, "Work Arrangement")
-        allowed_match = re.search(
-            r"(?ims)Allowed Locations\\*{0,2}\\s*:\\s*\\n(.*?)(?=^\\s*[-*]\\s*\\*\\*[^\\n]+:\\*\\*|\\Z)",
-            location_section,
+        prefs["allowed_locations"] = _extract_nested_bullets(
+            location_section, "Allowed Locations"
         )
-        if allowed_match:
-            prefs["allowed_locations"] = _extract_bullets(allowed_match.group(1))
 
         sal_match = re.search(
             r"Minimum Base Salary\\*{0,2}\\s*:\\s*\\$?(\\d{1,3}(?:,\\d{3})*|\\d+)",
@@ -119,27 +141,26 @@ def parse_markdown_preferences(filepath: str) -> Dict[str, Any]:
                 pass
 
         exclusion_section = _extract_section(content, "Hard Exclusions")
-        company_match = re.search(
-            r"(?ims)Excluded Companies\\*{0,2}\\s*:\\s*\\n(.*?)(?=^\\s*[-*]\\s*\\*\\*[^\\n]+:\\*\\*|\\Z)",
-            exclusion_section,
-        )
-        if company_match:
-            prefs["excluded_companies"] = [
-                value.lower() for value in _extract_bullets(company_match.group(1))
-            ]
+        prefs["excluded_companies"] = [
+            value.lower()
+            for value in _extract_nested_bullets(
+                exclusion_section, "Excluded Companies"
+            )
+        ]
 
-        keyword_match = re.search(
-            r"Excluded (?:Keywords in Titles|Title Keywords)\\*{0,2}\\s*:\\s*([^\\n\\r]+)",
-            exclusion_section,
-            re.IGNORECASE,
+        keyword_lines = _extract_nested_bullets(
+            exclusion_section, "Excluded Keywords in Titles"
         )
-        if keyword_match:
-            raw = keyword_match.group(1)
-            quoted = re.findall(r'"([^"]+)"', raw)
-            values = quoted or [part.strip() for part in raw.split(",")]
-            prefs["excluded_title_keywords"] = [
-                value.lower().strip() for value in values if value.strip()
-            ]
+        if not keyword_lines:
+            keyword_lines = _extract_nested_bullets(
+                exclusion_section, "Excluded Title Keywords"
+            )
+        raw_keywords = ", ".join(keyword_lines)
+        quoted = re.findall(r'"([^"]+)"', raw_keywords)
+        values = quoted or [part.strip() for part in raw_keywords.split(",")]
+        prefs["excluded_title_keywords"] = [
+            value.lower().strip() for value in values if value.strip()
+        ]
 
     except Exception as e:
         sys.stderr.write(f"Error parsing preferences {filepath}: {e}\\n")
